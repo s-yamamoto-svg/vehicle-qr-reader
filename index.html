@@ -7,107 +7,104 @@
   <meta name="theme-color" content="#17365d">
   <title>車検証QRリーダー</title>
 
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-
   <style>
-    :root {
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
       font-family: "Segoe UI", "Noto Sans JP", sans-serif;
       color: #243247;
       background: #f3f6fa;
     }
 
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-    }
-
     header {
       padding: 22px 18px;
-      background: #17365d;
       color: white;
+      background: #17365d;
     }
 
-    header h1 {
-      margin: 0 0 6px;
-      font-size: 22px;
-    }
-
-    header p {
-      margin: 0;
-      font-size: 13px;
-      color: #dce7f5;
-    }
+    header h1 { margin: 0 0 6px; font-size: 22px; }
+    header p { margin: 0; font-size: 13px; color: #dce7f5; }
 
     main {
-      width: min(100% - 28px, 640px);
-      margin: 22px auto;
+      width: min(100% - 24px, 760px);
+      margin: 20px auto;
     }
 
     .card {
       background: white;
-      padding: 20px;
+      border-radius: 12px;
+      padding: 18px;
       margin-bottom: 16px;
-      border-radius: 14px;
       box-shadow: 0 3px 14px #17365d12;
     }
 
-    h2 {
-      margin: 0 0 14px;
-      font-size: 17px;
-    }
+    h2 { margin: 0 0 14px; font-size: 17px; }
 
-    button {
+    button, .file-label {
+      display: block;
       width: 100%;
       padding: 13px;
-      margin-top: 9px;
+      margin-top: 10px;
       border: 0;
-      border-radius: 9px;
+      border-radius: 8px;
       font-size: 15px;
       font-weight: 600;
+      text-align: center;
       cursor: pointer;
     }
 
-    .primary {
-      background: #245da8;
-      color: white;
-    }
+    .primary { background: #245da8; color: white; }
+    .secondary { background: #e8eef6; color: #17365d; }
+    .danger { background: #f9e9e9; color: #9a3030; }
 
-    .secondary {
-      background: #e8eef6;
-      color: #17365d;
-    }
-
-    .danger {
-      background: #f9e9e9;
-      color: #9a3030;
-    }
-
-    #reader {
-      width: 100%;
+    input[type="file"] {
+      position: absolute;
+      width: 1px;
+      height: 1px;
       overflow: hidden;
+      clip: rect(0, 0, 0, 0);
     }
 
     #status {
       padding: 12px;
-      background: #edf3fa;
       border-radius: 8px;
-      font-size: 14px;
+      background: #edf3fa;
+      line-height: 1.6;
       overflow-wrap: anywhere;
     }
 
-    #result {
+    #preview {
+      display: block;
       width: 100%;
-      min-height: 150px;
-      padding: 12px;
-      border: 1px solid #ccd5e1;
+      height: auto;
+      margin-top: 12px;
+      border: 1px solid #d5deea;
+      border-radius: 6px;
+    }
+
+    #results {
+      display: grid;
+      gap: 12px;
+    }
+
+    .result-item {
+      border: 1px solid #d5deea;
       border-radius: 8px;
-      resize: vertical;
-      font-size: 14px;
-      line-height: 1.6;
+      padding: 12px;
       overflow-wrap: anywhere;
+    }
+
+    .result-item strong {
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .result-item pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      margin: 0;
+      font-size: 13px;
     }
 
     .note {
@@ -118,52 +115,57 @@
 
     footer {
       text-align: center;
+      padding: 10px 20px 30px;
       color: #68778b;
       font-size: 12px;
-      padding: 10px 20px 30px;
     }
   </style>
+
+  <!-- PDFをブラウザ内で画像化 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+  <!-- QRコードを画像から読み取り -->
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 </head>
 
 <body>
   <header>
     <h1>車検証 QRリーダー</h1>
-    <p>ロングラン補償 申込支援ツール・試作版</p>
+    <p>自動車検査証記録事項 PDF対応・試作版</p>
   </header>
 
   <main>
     <section class="card">
-      <h2>01　QRコード読み取り</h2>
+      <h2>01　PDFを選択</h2>
 
-      <div id="reader"></div>
-
-      <button id="startBtn" class="primary">
-        カメラを起動
-      </button>
-
-      <button id="stopBtn" class="secondary">
-        カメラを停止
-      </button>
-
-      <p id="status">待機中です。カメラを起動してください。</p>
+      <label class="file-label primary" for="pdfFile">
+        車検証PDFを選択
+      </label>
+      <input id="pdfFile" type="file" accept="application/pdf,.pdf">
 
       <p class="note">
-        初回はブラウザからカメラの使用許可を求められます。
-        スマートフォンでは背面カメラを優先します。
+        PDFの1ページ目を画像化してQRコードを探します。
+        ファイルはこのページ内で処理し、読み取り結果を外部サーバーへ送信する機能はありません。
       </p>
+
+      <button id="scanBtn" class="secondary" disabled>
+        QRコードを再読み取り
+      </button>
+
+      <p id="status">PDFを選択してください。</p>
+
+      <canvas id="preview" hidden></canvas>
     </section>
 
     <section class="card">
       <h2>02　読み取り結果</h2>
 
-      <textarea
-        id="result"
-        placeholder="QRコードを読み取ると、ここに結果が表示されます。"
-        readonly
-      ></textarea>
+      <div id="results">
+        <p class="note">まだ読み取り結果はありません。</p>
+      </div>
 
-      <button id="copyBtn" class="secondary">
-        結果をコピー
+      <button id="copyBtn" class="primary">
+        読み取り結果をコピー
       </button>
 
       <button id="clearBtn" class="danger">
@@ -172,152 +174,249 @@
     </section>
 
     <section class="card">
-      <h2>03　次の開発予定</h2>
+      <h2>03　次の開発</h2>
       <p>
-        読み取ったデータの形式を確認した後、
-        車台番号・車名・初度登録年月などの項目へ
-        自動で振り分ける機能を追加します。
+        国土交通省の仕様に基づき、二次元コード2の2分割と
+        二次元コード3の3分割を識別し、データを正しい順序で
+        結合して車台番号や初度登録年月などに振り分けます。
       </p>
       <p class="note">
-        現在はQRコードの内容をそのまま表示する試作段階です。
-        車検証の全項目を読み取れることを保証するものではありません。
+        現段階ではコードの自動分類・結合は未実装です。
+        読み取れた文字列を表示するための試作です。
       </p>
     </section>
   </main>
 
-  <footer>
-    試作版 v0.1 ｜ 読み取りデータの送信機能なし
-  </footer>
+  <footer>試作版 v0.2</footer>
 
   <script>
-    const readerElement = document.getElementById("reader");
-    const startBtn = document.getElementById("startBtn");
-    const stopBtn = document.getElementById("stopBtn");
-    const statusElement = document.getElementById("status");
-    const resultElement = document.getElementById("result");
-    const copyBtn = document.getElementById("copyBtn");
-    const clearBtn = document.getElementById("clearBtn");
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
-    let scanner = null;
-    let cameraRunning = false;
-    let starting = false;
+    const pdfInput = document.getElementById("pdfFile");
+    const scanBtn = document.getElementById("scanBtn");
+    const status = document.getElementById("status");
+    const preview = document.getElementById("preview");
+    const ctx = preview.getContext("2d", {
+      willReadFrequently: true
+    });
+    const results = document.getElementById("results");
+
+    let currentPdf = null;
+    let decodedCodes = [];
 
     function setStatus(message) {
-      statusElement.textContent = message;
+      status.textContent = message;
     }
 
-    async function startCamera() {
-      if (cameraRunning || starting) return;
+    function showResults() {
+      results.replaceChildren();
 
-      if (!window.Html5Qrcode) {
-        setStatus(
-          "読み取りライブラリを読み込めません。通信環境を確認してください。"
-        );
+      if (decodedCodes.length === 0) {
+        const message = document.createElement("p");
+        message.className = "note";
+        message.textContent = "QRコードはまだ検出されていません。";
+        results.appendChild(message);
         return;
       }
 
-      starting = true;
-      startBtn.disabled = true;
-      setStatus("カメラを準備しています...");
+      decodedCodes.forEach((code, index) => {
+        const item = document.createElement("div");
+        item.className = "result-item";
+
+        const title = document.createElement("strong");
+        title.textContent = "検出コード " + (index + 1);
+
+        const value = document.createElement("pre");
+        value.textContent = code;
+
+        item.append(title, value);
+        results.appendChild(item);
+      });
+    }
+
+    function addCode(text) {
+      if (!decodedCodes.includes(text)) {
+        decodedCodes.push(text);
+      }
+    }
+
+    async function scanCanvas() {
+      decodedCodes = [];
+      showResults();
+
+      const width = preview.width;
+      const height = preview.height;
+
+      // QRコード全体が領域内に入るよう、重なりを持たせて走査
+      const tileSize = Math.min(360, Math.max(width, height));
+      const step = Math.max(100, Math.floor(tileSize * 0.55));
+
+      const tile = document.createElement("canvas");
+      tile.width = tileSize;
+      tile.height = tileSize;
+
+      const tileCtx = tile.getContext("2d", {
+        willReadFrequently: true
+      });
+
+      let checked = 0;
+
+      for (let y = 0; y < height; y += step) {
+        for (let x = 0; x < width; x += step) {
+          const w = Math.min(tileSize, width - x);
+          const h = Math.min(tileSize, height - y);
+
+          tileCtx.clearRect(0, 0, tileSize, tileSize);
+          tileCtx.drawImage(
+            preview,
+            x, y, w, h,
+            0, 0, w, h
+          );
+
+          const image = tileCtx.getImageData(
+            0, 0, w, h
+          );
+
+          const code = jsQR(
+            image.data,
+            image.width,
+            image.height,
+            { inversionAttempts: "attemptBoth" }
+          );
+
+          if (code && code.data) {
+            addCode(code.data);
+          }
+
+          checked++;
+
+          // スマホのブラウザが固まりにくいよう時々処理を譲る
+          if (checked % 8 === 0) {
+            setStatus(
+              "QRコードを検索中... 検出 " +
+              decodedCodes.length + " 件"
+            );
+            await new Promise(resolve => setTimeout(resolve, 0));
+          }
+        }
+      }
+
+      showResults();
+
+      if (decodedCodes.length > 0) {
+        setStatus(
+          "完了：QRコードを " + decodedCodes.length +
+          " 種類検出しました。"
+        );
+      } else {
+        setStatus(
+          "QRコードを検出できませんでした。" +
+          "PDFの画質やコードの大きさを確認してください。"
+        );
+      }
+    }
+
+    pdfInput.addEventListener("change", async () => {
+      const file = pdfInput.files[0];
+      if (!file) return;
+
+      if (file.type !== "application/pdf" &&
+          !file.name.toLowerCase().endsWith(".pdf")) {
+        setStatus("PDFファイルを選択してください。");
+        return;
+      }
+
+      currentPdf = null;
+      scanBtn.disabled = true;
+      preview.hidden = true;
+      decodedCodes = [];
+      showResults();
 
       try {
-        scanner = new Html5Qrcode("reader");
+        setStatus("PDFを読み込んでいます...");
 
-        await scanner.start(
-          { facingMode: "environment" },
-          {
-            fps: 10,
-            qrbox: { width: 240, height: 240 },
-            aspectRatio: 1.0
-          },
-          (decodedText) => {
-            resultElement.value = decodedText;
-            setStatus("読み取り成功。結果を表示しました。");
-            stopCamera();
-          },
-          () => {
-            // QRコードを検出していない間は何もしません。
-          }
-        );
+        const bytes = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({
+          data: new Uint8Array(bytes)
+        }).promise;
 
-        cameraRunning = true;
-        setStatus("読み取り中です。QRコードを枠内に合わせてください。");
+        currentPdf = pdf;
+
+        if (pdf.numPages < 1) {
+          throw new Error("PDFにページがありません。");
+        }
+
+        setStatus("1ページ目を画像に変換しています...");
+
+        const page = await pdf.getPage(1);
+        const viewport = page.getViewport({ scale: 2.5 });
+
+        preview.width = Math.floor(viewport.width);
+        preview.height = Math.floor(viewport.height);
+        preview.hidden = false;
+
+        await page.render({
+          canvasContext: ctx,
+          viewport: viewport
+        }).promise;
+
+        scanBtn.disabled = false;
+        setStatus("PDFを読み込みました。QRコードを検索します。");
+
+        await scanCanvas();
+
       } catch (error) {
-        const message = error && error.message
-          ? error.message
-          : String(error);
-
+        console.error(error);
         setStatus(
-          "カメラを起動できませんでした: " + message
+          "PDFを処理できませんでした: " +
+          (error.message || String(error))
         );
+      }
+    });
 
-        if (scanner) {
-          try {
-            await scanner.clear();
-          } catch (_) {
-            // 後片付け時のエラーは無視します。
-          }
-          scanner = null;
-        }
+    scanBtn.addEventListener("click", async () => {
+      if (!currentPdf) return;
+
+      scanBtn.disabled = true;
+      try {
+        await scanCanvas();
       } finally {
-        starting = false;
-        startBtn.disabled = false;
+        scanBtn.disabled = false;
       }
-    }
+    });
 
-    async function stopCamera() {
-      if (!scanner) {
-        cameraRunning = false;
-        return;
-      }
-
-      try {
-        if (cameraRunning) {
-          await scanner.stop();
+    document.getElementById("copyBtn").addEventListener(
+      "click",
+      async () => {
+        if (decodedCodes.length === 0) {
+          setStatus("コピーする読み取り結果がありません。");
+          return;
         }
-      } catch (_) {
-        // 停止済みの場合などは後続処理を続けます。
+
+        const text = decodedCodes
+          .map((code, i) => "検出コード " + (i + 1) + "\n" + code)
+          .join("\n\n");
+
+        try {
+          await navigator.clipboard.writeText(text);
+          setStatus("読み取り結果をコピーしました。");
+        } catch (error) {
+          setStatus(
+            "コピーできませんでした。ブラウザの権限を確認してください。"
+          );
+        }
       }
+    );
 
-      try {
-        await scanner.clear();
-      } catch (_) {
-        // 表示の後片付けを続けます。
+    document.getElementById("clearBtn").addEventListener(
+      "click",
+      () => {
+        decodedCodes = [];
+        showResults();
+        setStatus("読み取り結果をクリアしました。");
       }
-
-      scanner = null;
-      cameraRunning = false;
-      starting = false;
-      startBtn.disabled = false;
-    }
-
-    startBtn.addEventListener("click", startCamera);
-
-    stopBtn.addEventListener("click", async () => {
-      await stopCamera();
-      setStatus("カメラを停止しました。");
-    });
-
-    copyBtn.addEventListener("click", async () => {
-      if (!resultElement.value) {
-        setStatus("コピーする結果がありません。");
-        return;
-      }
-
-      try {
-        await navigator.clipboard.writeText(resultElement.value);
-        setStatus("読み取り結果をコピーしました。");
-      } catch (_) {
-        setStatus(
-          "コピーできませんでした。ブラウザの権限を確認してください。"
-        );
-      }
-    });
-
-    clearBtn.addEventListener("click", () => {
-      resultElement.value = "";
-      setStatus("読み取り結果をクリアしました。");
-    });
+    );
   </script>
 </body>
 </html>
