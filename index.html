@@ -1,0 +1,323 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17365d">
+  <title>車検証QRリーダー</title>
+
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <style>
+    :root {
+      font-family: "Segoe UI", "Noto Sans JP", sans-serif;
+      color: #243247;
+      background: #f3f6fa;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+    }
+
+    header {
+      padding: 22px 18px;
+      background: #17365d;
+      color: white;
+    }
+
+    header h1 {
+      margin: 0 0 6px;
+      font-size: 22px;
+    }
+
+    header p {
+      margin: 0;
+      font-size: 13px;
+      color: #dce7f5;
+    }
+
+    main {
+      width: min(100% - 28px, 640px);
+      margin: 22px auto;
+    }
+
+    .card {
+      background: white;
+      padding: 20px;
+      margin-bottom: 16px;
+      border-radius: 14px;
+      box-shadow: 0 3px 14px #17365d12;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 17px;
+    }
+
+    button {
+      width: 100%;
+      padding: 13px;
+      margin-top: 9px;
+      border: 0;
+      border-radius: 9px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .primary {
+      background: #245da8;
+      color: white;
+    }
+
+    .secondary {
+      background: #e8eef6;
+      color: #17365d;
+    }
+
+    .danger {
+      background: #f9e9e9;
+      color: #9a3030;
+    }
+
+    #reader {
+      width: 100%;
+      overflow: hidden;
+    }
+
+    #status {
+      padding: 12px;
+      background: #edf3fa;
+      border-radius: 8px;
+      font-size: 14px;
+      overflow-wrap: anywhere;
+    }
+
+    #result {
+      width: 100%;
+      min-height: 150px;
+      padding: 12px;
+      border: 1px solid #ccd5e1;
+      border-radius: 8px;
+      resize: vertical;
+      font-size: 14px;
+      line-height: 1.6;
+      overflow-wrap: anywhere;
+    }
+
+    .note {
+      color: #68778b;
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    footer {
+      text-align: center;
+      color: #68778b;
+      font-size: 12px;
+      padding: 10px 20px 30px;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>車検証 QRリーダー</h1>
+    <p>ロングラン補償 申込支援ツール・試作版</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>01　QRコード読み取り</h2>
+
+      <div id="reader"></div>
+
+      <button id="startBtn" class="primary">
+        カメラを起動
+      </button>
+
+      <button id="stopBtn" class="secondary">
+        カメラを停止
+      </button>
+
+      <p id="status">待機中です。カメラを起動してください。</p>
+
+      <p class="note">
+        初回はブラウザからカメラの使用許可を求められます。
+        スマートフォンでは背面カメラを優先します。
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>02　読み取り結果</h2>
+
+      <textarea
+        id="result"
+        placeholder="QRコードを読み取ると、ここに結果が表示されます。"
+        readonly
+      ></textarea>
+
+      <button id="copyBtn" class="secondary">
+        結果をコピー
+      </button>
+
+      <button id="clearBtn" class="danger">
+        結果をクリア
+      </button>
+    </section>
+
+    <section class="card">
+      <h2>03　次の開発予定</h2>
+      <p>
+        読み取ったデータの形式を確認した後、
+        車台番号・車名・初度登録年月などの項目へ
+        自動で振り分ける機能を追加します。
+      </p>
+      <p class="note">
+        現在はQRコードの内容をそのまま表示する試作段階です。
+        車検証の全項目を読み取れることを保証するものではありません。
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    試作版 v0.1 ｜ 読み取りデータの送信機能なし
+  </footer>
+
+  <script>
+    const readerElement = document.getElementById("reader");
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const statusElement = document.getElementById("status");
+    const resultElement = document.getElementById("result");
+    const copyBtn = document.getElementById("copyBtn");
+    const clearBtn = document.getElementById("clearBtn");
+
+    let scanner = null;
+    let cameraRunning = false;
+    let starting = false;
+
+    function setStatus(message) {
+      statusElement.textContent = message;
+    }
+
+    async function startCamera() {
+      if (cameraRunning || starting) return;
+
+      if (!window.Html5Qrcode) {
+        setStatus(
+          "読み取りライブラリを読み込めません。通信環境を確認してください。"
+        );
+        return;
+      }
+
+      starting = true;
+      startBtn.disabled = true;
+      setStatus("カメラを準備しています...");
+
+      try {
+        scanner = new Html5Qrcode("reader");
+
+        await scanner.start(
+          { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: { width: 240, height: 240 },
+            aspectRatio: 1.0
+          },
+          (decodedText) => {
+            resultElement.value = decodedText;
+            setStatus("読み取り成功。結果を表示しました。");
+            stopCamera();
+          },
+          () => {
+            // QRコードを検出していない間は何もしません。
+          }
+        );
+
+        cameraRunning = true;
+        setStatus("読み取り中です。QRコードを枠内に合わせてください。");
+      } catch (error) {
+        const message = error && error.message
+          ? error.message
+          : String(error);
+
+        setStatus(
+          "カメラを起動できませんでした: " + message
+        );
+
+        if (scanner) {
+          try {
+            await scanner.clear();
+          } catch (_) {
+            // 後片付け時のエラーは無視します。
+          }
+          scanner = null;
+        }
+      } finally {
+        starting = false;
+        startBtn.disabled = false;
+      }
+    }
+
+    async function stopCamera() {
+      if (!scanner) {
+        cameraRunning = false;
+        return;
+      }
+
+      try {
+        if (cameraRunning) {
+          await scanner.stop();
+        }
+      } catch (_) {
+        // 停止済みの場合などは後続処理を続けます。
+      }
+
+      try {
+        await scanner.clear();
+      } catch (_) {
+        // 表示の後片付けを続けます。
+      }
+
+      scanner = null;
+      cameraRunning = false;
+      starting = false;
+      startBtn.disabled = false;
+    }
+
+    startBtn.addEventListener("click", startCamera);
+
+    stopBtn.addEventListener("click", async () => {
+      await stopCamera();
+      setStatus("カメラを停止しました。");
+    });
+
+    copyBtn.addEventListener("click", async () => {
+      if (!resultElement.value) {
+        setStatus("コピーする結果がありません。");
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(resultElement.value);
+        setStatus("読み取り結果をコピーしました。");
+      } catch (_) {
+        setStatus(
+          "コピーできませんでした。ブラウザの権限を確認してください。"
+        );
+      }
+    });
+
+    clearBtn.addEventListener("click", () => {
+      resultElement.value = "";
+      setStatus("読み取り結果をクリアしました。");
+    });
+  </script>
+</body>
+</html>
