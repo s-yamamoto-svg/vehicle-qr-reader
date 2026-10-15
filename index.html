@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -17,19 +16,11 @@
       background: #f3f6fa;
     }
 
-    header {
-      padding: 22px 18px;
-      color: white;
-      background: #17365d;
-    }
-
+    header { padding: 22px 18px; color: white; background: #17365d; }
     header h1 { margin: 0 0 6px; font-size: 22px; }
     header p { margin: 0; font-size: 13px; color: #dce7f5; }
 
-    main {
-      width: min(100% - 24px, 760px);
-      margin: 20px auto;
-    }
+    main { width: min(100% - 24px, 820px); margin: 20px auto; }
 
     .card {
       background: white;
@@ -40,6 +31,7 @@
     }
 
     h2 { margin: 0 0 14px; font-size: 17px; }
+    h3 { margin: 18px 0 10px; font-size: 15px; color: #17365d; }
 
     button, .file-label {
       display: block;
@@ -52,371 +44,843 @@
       font-weight: 600;
       text-align: center;
       cursor: pointer;
+      font-family: inherit;
     }
+    button:disabled { opacity: .5; cursor: default; }
 
     .primary { background: #245da8; color: white; }
     .secondary { background: #e8eef6; color: #17365d; }
     .danger { background: #f9e9e9; color: #9a3030; }
 
+    .btn-row { display: grid; gap: 0 10px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+
     input[type="file"] {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
+      position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0);
     }
 
     #status {
-      padding: 12px;
-      border-radius: 8px;
-      background: #edf3fa;
-      line-height: 1.6;
-      overflow-wrap: anywhere;
+      padding: 12px; border-radius: 8px; background: #edf3fa;
+      line-height: 1.6; overflow-wrap: anywhere;
     }
+    #status.ok { background: #e6f4ea; }
+    #status.warn { background: #fdf3dc; }
+    #status.err { background: #fbe9e9; }
+
+    details { margin-top: 12px; }
+    summary { cursor: pointer; font-size: 13px; color: #245da8; }
 
     #preview {
-      display: block;
-      width: 100%;
-      height: auto;
-      margin-top: 12px;
-      border: 1px solid #d5deea;
-      border-radius: 6px;
+      display: block; width: 100%; height: auto; margin-top: 10px;
+      border: 1px solid #d5deea; border-radius: 6px;
     }
 
-    #results {
-      display: grid;
-      gap: 12px;
+    .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+    .badge {
+      padding: 6px 10px; border-radius: 999px; font-size: 13px; font-weight: 600;
+      background: #edf3fa; color: #17365d;
+    }
+    .badge.ok { background: #e6f4ea; color: #1e6b36; }
+    .badge.ng { background: #fbe9e9; color: #9a3030; }
+
+    #notes { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.7; color: #7a5a00; }
+    #notes:empty { display: none; }
+
+    .fields { display: grid; gap: 12px 14px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+    .field label { display: block; font-size: 12px; font-weight: 600; color: #4b5b70; margin-bottom: 4px; }
+    .inputrow { display: flex; gap: 6px; }
+    .inputrow input {
+      flex: 1; min-width: 0; padding: 9px 10px; font-size: 15px; font-family: inherit;
+      border: 1px solid #c9d5e4; border-radius: 6px; color: #243247; background: #fff;
+    }
+    .inputrow input:focus { outline: 2px solid #245da8; outline-offset: 0; }
+    button.mini {
+      width: auto; margin: 0; padding: 0 11px; font-size: 12px;
+      background: #e8eef6; color: #17365d; border-radius: 6px;
+    }
+    .hint { margin-top: 3px; font-size: 12px; color: #68778b; overflow-wrap: anywhere; }
+
+    pre.raw {
+      white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0 0;
+      font-size: 13px; padding: 10px; background: #f3f6fa; border-radius: 6px;
     }
 
-    .result-item {
-      border: 1px solid #d5deea;
-      border-radius: 8px;
-      padding: 12px;
-      overflow-wrap: anywhere;
-    }
+    .note { color: #68778b; font-size: 12px; line-height: 1.7; }
 
-    .result-item strong {
-      display: block;
-      margin-bottom: 8px;
-    }
-
-    .result-item pre {
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
-      margin: 0;
-      font-size: 13px;
-    }
-
-    .note {
-      color: #68778b;
-      font-size: 12px;
-      line-height: 1.7;
-    }
-
-    footer {
-      text-align: center;
-      padding: 10px 20px 30px;
-      color: #68778b;
-      font-size: 12px;
-    }
+    footer { text-align: center; padding: 10px 20px 30px; color: #68778b; font-size: 12px; }
   </style>
 
   <!-- PDFをブラウザ内で画像化 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
-  <!-- QRコードを画像から読み取り -->
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <!-- QRコードの複数検出(ZXing-C++ の WebAssembly 版)。wasm本体もこのバージョン固定のCDNから読み込まれます -->
+  <script src="https://cdn.jsdelivr.net/npm/zxing-wasm@3.1.5/dist/iife/reader/index.js"></script>
 </head>
 
 <body>
   <header>
     <h1>車検証 QRリーダー</h1>
-    <p>自動車検査証記録事項 PDF対応・試作版</p>
+    <p>自動車検査証記録事項 PDF / 画像 → 項目ごとに分解してフォームへ転記</p>
   </header>
 
   <main>
     <section class="card">
-      <h2>01　PDFを選択</h2>
+      <h2>01　ファイルを選択</h2>
 
-      <label class="file-label primary" for="pdfFile">
-        車検証PDFを選択
-      </label>
-      <input id="pdfFile" type="file" accept="application/pdf,.pdf">
+      <label class="file-label primary" for="srcFile">車検証PDF または 画像を選択</label>
+      <input id="srcFile" type="file" accept="application/pdf,.pdf,image/*">
 
       <p class="note">
-        PDFの1ページ目を画像化してQRコードを探します。
-        ファイルはこのページ内で処理し、読み取り結果を外部サーバーへ送信する機能はありません。
+        PDFは1ページ目から順に二次元コード2・3を探します。スマホで撮影した画像も読めます。
+        ファイルはこのページ内(ブラウザ上)で処理し、読み取り結果を外部へ送信する処理はありません。
       </p>
 
-      <button id="scanBtn" class="secondary" disabled>
-        QRコードを再読み取り
-      </button>
-
-      <p id="status">PDFを選択してください。</p>
-
-      <canvas id="preview" hidden></canvas>
-    </section>
-
-    <section class="card">
-      <h2>02　読み取り結果</h2>
-
-      <div id="results">
-        <p class="note">まだ読み取り結果はありません。</p>
+      <div class="btn-row">
+        <button id="scanBtn" class="secondary" disabled>再読み取り</button>
+        <button id="clearBtn" class="danger">結果をクリア</button>
       </div>
 
-      <button id="copyBtn" class="primary">
-        読み取り結果をコピー
-      </button>
+      <p id="status">ファイルを選択してください。</p>
 
-      <button id="clearBtn" class="danger">
-        結果をクリア
-      </button>
+      <details id="previewBox" hidden>
+        <summary>読み取った画像を確認(緑枠=使用、橙枠=未使用)</summary>
+        <canvas id="preview"></canvas>
+      </details>
     </section>
 
     <section class="card">
-      <h2>03　次の開発</h2>
-      <p>
-        国土交通省の仕様に基づき、二次元コード2の2分割と
-        二次元コード3の3分割を識別し、データを正しい順序で
-        結合して車台番号や初度登録年月などに振り分けます。
-      </p>
+      <h2>02　検出結果</h2>
+      <div id="summary" class="badges"><span class="badge">未読み取り</span></div>
+      <ul id="notes"></ul>
+
+      <details>
+        <summary>結合後の生データを見る(△=全角空白、▲=半角空白)</summary>
+        <pre id="rawView" class="raw">まだ読み取り結果はありません。</pre>
+      </details>
+    </section>
+
+    <section class="card">
+      <h2>03　転記フォーム</h2>
       <p class="note">
-        現段階ではコードの自動分類・結合は未実装です。
-        読み取れた文字列を表示するための試作です。
+        値は編集できます。各欄の「コピー」で1項目ずつ、下のボタンで全項目をまとめて取り出せます。
+        数字・英字は半角に揃え、日付は西暦(YYYY-MM-DD)にしています。
+        年は下2桁のため、現在年+5年を超える場合は1900年代として扱います。
       </p>
+      <div id="formArea"><p class="note">読み取り後に項目が表示されます。</p></div>
+
+      <div class="btn-row">
+        <button id="copyTsvBtn" class="primary" disabled>全項目をコピー(タブ区切り)</button>
+        <button id="copyJsonBtn" class="secondary" disabled>JSONでコピー</button>
+        <button id="csvBtn" class="secondary" disabled>CSVをダウンロード</button>
+      </div>
     </section>
   </main>
 
-  <footer>試作版 v0.2</footer>
+  <footer>項目定義: 国土交通省「二次元コード項目定義」(2023.1版)に準拠 ／ v1.0</footer>
 
   <script>
+    // ==== core:start ==================================================
+    // DOMに依存しない処理(連結・順序判定・項目分解)。単体テストできるよう分離しています。
+    "use strict";
+
+    const DELIM = "/";
+
+    function concatBytes(list) {
+      let n = 0;
+      for (const b of list) n += b.length;
+      const out = new Uint8Array(n);
+      let o = 0;
+      for (const b of list) { out.set(b, o); o += b.length; }
+      return out;
+    }
+
+    // 連結後のバイト列を文字列化。UTF-8として厳密に解釈できなければShift_JIS(CP932)。
+    // ※ 分割コードの境目で全角文字が割れる可能性があるため、必ず「結合してから」デコードする。
+    function decodeBytes(bytes) {
+      try { return new TextDecoder("utf-8", { fatal: true }).decode(bytes); } catch (e) { /* fallthrough */ }
+      return new TextDecoder("shift_jis").decode(bytes);
+    }
+
+    // ---- コード表(仕様書の設定例より) ----
+    const PLATE_BASE = [
+      "小板・2枚・ペイント", "大板・2枚・ペイント", "小板・1枚・ペイント", "大板・1枚・ペイント",
+      "小板・2枚・字光", "大板・2枚・字光", "小板・1枚・字光", "大板・1枚・字光"
+    ];
+    function plateLabel(c) {
+      if (c === "-") return "番号指示キー無し又は転入抹消番号";
+      const li = "ABCDEFGH".indexOf(c);
+      if (li >= 0) return PLATE_BASE[li] + "・希望番号";
+      const di = "12345678".indexOf(c);
+      if (di >= 0) return PLATE_BASE[di] + "・希望番号以外";
+      return "";
+    }
+    const NOISE = { "10": "平成10年規制", "11": "平成11年規制", "12": "平成12年規制", "13": "平成13年規制",
+                    "26": "平成26年規制", "28": "平成28年規制", "-": "騒音規制対象外" };
+    const DRIVE = { "1": "全輪駆動車", "2": "全輪駆動車以外", "0": "設定値無し", "-": "一般車" };
+    const OPA   = { "1": "オパシメータ測定対象車", "0": "測定対象外車" };
+    const NOXMODE = { "A": "排出ガス測定モードあり", "-": "設定されない" };
+    const FUEL = { "01": "ガソリン", "02": "軽油", "03": "LPG", "04": "灯油", "05": "電気", "06": "ガソリン・LPG",
+      "07": "ガソリン・灯油", "08": "メタノール", "09": "CNG", "11": "LNG", "12": "ANG", "13": "圧縮水素",
+      "14": "ガソリン・電気", "15": "LPG・電気", "16": "軽油・電気", "99": "その他", "00": "－" };
+
+    function modelNote(s) {
+      if (s === "*SHISAKU") return "試作(型式の値なし)";
+      if (s === "*KUMITATE") return "組立";
+      if (s === "*FUMEI") return "型式IDコードが不明";
+      if (/\*K$/.test(s)) return "改造車";
+      if (/\*S$/.test(s)) return "試作";
+      return "";
+    }
+
+    // ---- 二次元コード2(別紙1) ----
+    // 1 バージョン(1) / 2 自動車登録番号(全角12) / 3 標板区分(1) / 4 車台番号(可変≦23, '/'終端)
+    // 5 原動機型式(可変≦24, '/'終端) / 6 帳票種別(1)
+    function parseCode2(s) {
+      const errors = [];
+      let p = 0;
+      const take = (n, name) => {
+        const v = s.substr(p, n);
+        if (v.length < n) errors.push(name + "のデータが不足しています");
+        p += n;
+        return v;
+      };
+      const until = (name) => {
+        const i = s.indexOf(DELIM, p);
+        if (i < 0) {
+          errors.push(name + "の区切り文字「/」が見つかりません");
+          const v = s.slice(p); p = s.length; return v;
+        }
+        const v = s.slice(p, i); p = i + 1; return v;
+      };
+      const f = {};
+      f.version = take(1, "バージョン情報");
+      f.reg = take(12, "自動車登録番号");
+      f.plate = take(1, "標板の枚数・大きさ・希望番号の識別");
+      f.chassis = until("車台番号");
+      f.engine = until("原動機型式");
+      f.formType = take(1, "帳票種別");
+      if (p < s.length) errors.push("末尾に未解釈のデータが" + (s.length - p) + "文字あります");
+
+      if (!/^\d$/.test(f.version)) errors.push("バージョン情報が数字ではありません");
+      if (f.reg.length !== 12 || f.reg.includes(DELIM)) errors.push("自動車登録番号が12文字ではありません");
+      if (!/^[A-H1-8-]$/.test(f.plate)) errors.push("標板区分のコードが想定外です");
+      if (!/^[\x21-\x7e]{1,23}$/.test(f.chassis)) errors.push("車台番号が半角1〜23文字ではありません");
+      if (!/^[\x21-\x7e]{0,24}$/.test(f.engine)) errors.push("原動機型式が半角24文字以内ではありません");
+      if (!/^\d$/.test(f.formType)) errors.push("帳票種別が数字ではありません");
+      return { fields: f, errors };
+    }
+
+    // ---- 二次元コード3(別紙2) ----
+    // 1 バージョン(1) / 2 車台番号打刻位置(3) / 3 型式指定番号・類別区分番号(可変≦10,'/'終端)
+    // 4〜6 有効期間の満了する日(6) / 7 初度登録年月(4) / 8 型式(可変≦17,'/'終端)
+    // 9〜12 軸重×4(各4) / 13 騒音規制(2) / 14 近接排気騒音規制値(3) / 15 駆動方式(1)
+    // 16 オパシメータ測定車(1) / 17 NOx・PM測定モード(1) / 18 NOx値(4) / 19 PM値(5)
+    // 20 保安基準適用年月日(6) / 21 燃料の種類コード(2)
+    function parseCode3(s) {
+      const errors = [];
+      let p = 0;
+      const take = (n, name) => {
+        const v = s.substr(p, n);
+        if (v.length < n) errors.push(name + "のデータが不足しています");
+        p += n;
+        return v;
+      };
+      const until = (name) => {
+        const i = s.indexOf(DELIM, p);
+        if (i < 0) {
+          errors.push(name + "の区切り文字「/」が見つかりません");
+          const v = s.slice(p); p = s.length; return v;
+        }
+        const v = s.slice(p, i); p = i + 1; return v;
+      };
+      const f = {};
+      f.version = take(1, "バージョン情報");
+      f.stamp = take(3, "車台番号打刻位置");
+      f.typeNo = until("型式指定番号・類別区分番号");
+      f.expiry = take(6, "有効期間の満了する日");
+      f.firstReg = take(4, "初度登録年月");
+      f.model = until("型式");
+      f.axle = [take(4, "軸重(前前)"), take(4, "軸重(前後)"), take(4, "軸重(後前)"), take(4, "軸重(後後)")];
+      f.noise = take(2, "騒音規制");
+      f.nearNoise = take(3, "近接排気騒音規制値");
+      f.drive = take(1, "駆動方式");
+      f.opa = take(1, "オパシメータ測定車");
+      f.noxMode = take(1, "NOx・PM測定モード");
+      f.nox = take(4, "NOx値");
+      f.pm = take(5, "PM値");
+      f.standardDate = take(6, "保安基準適用年月日");
+      f.fuel = take(2, "燃料の種類コード");
+      if (p < s.length) errors.push("末尾に未解釈のデータが" + (s.length - p) + "文字あります");
+
+      if (!/^\d$/.test(f.version)) errors.push("バージョン情報が数字ではありません");
+      if (!/^(\d{3}|-  )$/.test(f.stamp)) errors.push("車台番号打刻位置の形式が想定外です");
+      if (!/^\d{0,10}$/.test(f.typeNo)) errors.push("型式指定番号・類別区分番号が数字10桁以内ではありません");
+      if (!/^\d{6}$/.test(f.expiry)) errors.push("有効期間の満了する日が数字6桁ではありません");
+      if (!/^\d{4}$/.test(f.firstReg)) errors.push("初度登録年月が数字4桁ではありません");
+      if (!/^[\x21-\x7e]{0,17}$/.test(f.model)) errors.push("型式が半角17文字以内ではありません");
+      f.axle.forEach((a, i) => { if (!/^(\d{4}|-   )$/.test(a)) errors.push("軸重(" + ["前前","前後","後前","後後"][i] + ")の形式が想定外です"); });
+      if (!/^(\d{2}|- )$/.test(f.noise)) errors.push("騒音規制の形式が想定外です");
+      if (!/^(\d{3}|-  )$/.test(f.nearNoise)) errors.push("近接排気騒音規制値の形式が想定外です");
+      if (!/^[0-2-]$/.test(f.drive)) errors.push("駆動方式のコードが想定外です");
+      if (!/^[01]$/.test(f.opa)) errors.push("オパシメータ測定車のコードが想定外です");
+      if (!/^[A-]$/.test(f.noxMode)) errors.push("NOx・PM測定モードのコードが想定外です");
+      if (!/^(\d{4}|-   )$/.test(f.nox)) errors.push("NOx値の形式が想定外です");
+      if (!/^(\d{5}|-    )$/.test(f.pm)) errors.push("PM値の形式が想定外です");
+      if (!/^\d{6}$/.test(f.standardDate)) errors.push("保安基準適用年月日が数字6桁ではありません");
+      if (!/^\d{2}$/.test(f.fuel)) errors.push("燃料の種類コードが数字2桁ではありません");
+      return { fields: f, errors };
+    }
+
+    // ---- 連結・順序判定 ----
+    // symbols: [{bytes, sequenceIndex, sequenceSize, sequenceId}]
+    // 1) QR標準の連結ヘッダ(Structured Append)があればそれで並べる(分割数2→コード2、3→コード3)
+    // 2) 連結ヘッダが無い場合は、仕様書の項目定義に合致する並びを総当たりで探す
+    function permutations(arr, k) {
+      const out = [];
+      const rec = (cur, rest) => {
+        if (cur.length === k) { out.push(cur); return; }
+        rest.forEach((x, i) => rec(cur.concat(x), rest.filter((_, j) => j !== i)));
+      };
+      rec([], arr);
+      return out;
+    }
+
+    function mergeSymbols(input) {
+      const notes = [];
+      const result = { code2: null, code3: null, notes, usedIdx: new Set() };
+
+      // 同一内容の重複検出を除去
+      const seen = new Set();
+      const symbols = [];
+      const origIdx = [];
+      input.forEach((s, i) => {
+        const key = [s.sequenceSize, s.sequenceIndex, s.sequenceId, Array.from(s.bytes).join(",")].join("|");
+        if (seen.has(key)) return;
+        seen.add(key);
+        symbols.push(s);
+        origIdx.push(i);
+      });
+
+      const make = (idxList, method) => {
+        const bytes = concatBytes(idxList.map(i => symbols[i].bytes));
+        return { bytes, text: decodeBytes(bytes), method, order: idxList.map(i => origIdx[i]) };
+      };
+
+      const groups = new Map();
+      const singles = [];
+      symbols.forEach((s, i) => {
+        if (s.sequenceSize > 1) {
+          const k = s.sequenceSize + "|" + s.sequenceId;
+          if (!groups.has(k)) groups.set(k, []);
+          groups.get(k).push(i);
+        } else {
+          singles.push(i);
+        }
+      });
+
+      const used = new Set();
+      for (const [, idxs] of groups) {
+        const size = symbols[idxs[0]].sequenceSize;
+        const bySeq = new Map();
+        idxs.forEach(i => bySeq.set(symbols[i].sequenceIndex, i));
+        const ordered = [];
+        for (let n = 0; n < size; n++) if (bySeq.has(n)) ordered.push(bySeq.get(n));
+        if (ordered.length !== size) {
+          notes.push("連結コード(" + size + "分割)のうち " + ordered.length + " 個しか検出できていません。画質・大きさを確認してください。");
+          continue;
+        }
+        const key = size === 2 ? "code2" : size === 3 ? "code3" : null;
+        if (!key) { notes.push("想定外の分割数(" + size + ")の連結コードを検出しました。"); continue; }
+        if (result[key]) { notes.push("二次元コード" + size + "と思われる連結コードが複数あります。最初のものを使用します。"); continue; }
+        result[key] = make(ordered, "連結ヘッダ");
+        ordered.forEach(i => used.add(i));
+      }
+
+      // 連結ヘッダが無いコードは、項目定義との照合で順序を推定
+      const pool = singles.filter(i => !used.has(i));
+      const need2 = !result.code2, need3 = !result.code3;
+      if ((need2 || need3) && pool.length > 0 && pool.length <= 8) {
+        const valid = (list, parser) => permutations(pool, list).filter(p =>
+          parser(decodeBytes(concatBytes(p.map(i => symbols[i].bytes)))).errors.length === 0);
+        const c2 = need2 ? valid(2, parseCode2) : [];
+        const c3 = need3 ? valid(3, parseCode3) : [];
+        const opts2 = c2.length ? c2 : [null];
+        const opts3 = c3.length ? c3 : [null];
+        let pick = null, count = 0;
+        for (const a of opts2) for (const b of opts3) {
+          if (a && b && a.some(i => b.includes(i))) continue;
+          if (!a && !b) continue;
+          count++;
+          if (!pick) pick = [a, b];
+        }
+        if (pick) {
+          if (pick[0]) { result.code2 = make(pick[0], "項目定義との照合で順序を推定"); pick[0].forEach(i => used.add(i)); }
+          if (pick[1]) { result.code3 = make(pick[1], "項目定義との照合で順序を推定"); pick[1].forEach(i => used.add(i)); }
+          if (count > 1) notes.push("順序の候補が複数あり、最初の候補を採用しました。生データと実物を見比べて確認してください。");
+        } else if (pool.length) {
+          notes.push("連結情報のないコードが " + pool.length + " 個あり、仕様書の並びに一致する組み合わせを見つけられませんでした。");
+        }
+      }
+
+      used.forEach(i => result.usedIdx.add(origIdx[i]));
+      const unused = symbols.length - used.size;
+      if (unused > 0 && (result.code2 || result.code3)) notes.push("使用しなかったQRコードが " + unused + " 個あります(車検証以外のコードの可能性)。");
+
+      if (result.code2) result.code2.parsed = parseCode2(result.code2.text);
+      if (result.code3) result.code3.parsed = parseCode3(result.code3.text);
+      return result;
+    }
+
+    // ---- 値の整形 ----
+    const nfkc = s => s.normalize("NFKC").replace(/[\s　]+/g, " ").trim();
+
+    function wareki(y, m, d) {
+      const t = y * 10000 + m * 100 + (d || 1);
+      let era, n;
+      if (t >= 20190501) { era = "令和"; n = y - 2018; }
+      else if (t >= 19890108) { era = "平成"; n = y - 1988; }
+      else if (t >= 19261225) { era = "昭和"; n = y - 1925; }
+      else return "";
+      return era + (n === 1 ? "元" : n) + "年" + m + "月" + (d ? d + "日" : "");
+    }
+
+    function fullYear(yy, nowYear) {
+      let y = 2000 + yy;
+      if (y > nowYear + 5) y -= 100;
+      return y;
+    }
+
+    // YYMMDD / YYMM → {value, hint}
+    function dateField(raw, withDay, unsetHint, nowYear) {
+      const unset = withDay ? "999999" : "9999";
+      if (raw === unset) return { value: "", hint: unsetHint };
+      const re = withDay ? /^(\d{2})(\d{2})(\d{2})$/ : /^(\d{2})(\d{2})$/;
+      const m = raw.match(re);
+      if (!m) return { value: raw.trim(), hint: "形式を解釈できませんでした" };
+      const y = fullYear(Number(m[1]), nowYear), mo = Number(m[2]), d = withDay ? Number(m[3]) : 0;
+      if (mo < 1 || mo > 12 || (withDay && (d < 1 || d > 31))) return { value: raw, hint: "日付として不正な値です" };
+      const pad = n => String(n).padStart(2, "0");
+      return {
+        value: y + "-" + pad(mo) + (withDay ? "-" + pad(d) : ""),
+        hint: wareki(y, mo, d)
+      };
+    }
+
+    const isBlankCode = s => /^-\s*$/.test(s);
+
+    // 画面に出す項目リストを作る。value=フォームに転記する値, hint=補足
+    function buildFields(r, nowYear) {
+      nowYear = nowYear || new Date().getFullYear();
+      const groups = [];
+
+      const g2 = { title: "二次元コード2(登録番号・車台番号・原動機型式)", items: [] };
+      if (r.code2) {
+        const f = r.code2.parsed.fields;
+        const office = nfkc(f.reg.slice(0, 4)), cls = nfkc(f.reg.slice(4, 7)),
+              kana = nfkc(f.reg.slice(7, 8)), serial = nfkc(f.reg.slice(8, 12));
+        const sh = f.chassis.match(/^\[(.{2})\]/);
+        g2.items.push(
+          { key: "reg_full", label: "自動車登録番号", value: [office, cls, kana, serial].filter(Boolean).join(" "), hint: "" },
+          { key: "reg_office", label: "登録番号:標板文字(運輸支局等)", value: office },
+          { key: "reg_class", label: "登録番号:分類番号", value: cls },
+          { key: "reg_kana", label: "登録番号:かな", value: kana },
+          { key: "reg_serial", label: "登録番号:一連番号", value: serial },
+          { key: "plate", label: "標板区分コード", value: f.plate, hint: plateLabel(f.plate) },
+          { key: "chassis", label: "車台番号", value: f.chassis, hint: sh ? "職権打刻(職権打刻コード " + sh[1] + ")" : "" },
+          { key: "engine", label: "原動機型式", value: f.engine, hint: modelNote(f.engine) },
+          { key: "form_type", label: "帳票種別", value: f.formType }
+        );
+      }
+      groups.push(g2);
+
+      const g3 = { title: "二次元コード3(型式・初度登録・諸元)", items: [] };
+      if (r.code3) {
+        const f = r.code3.parsed.fields;
+        const exp = dateField(f.expiry, true, "未設定/不明(電子車検証の券面では固定値)", nowYear);
+        const reg = dateField(f.firstReg, false, "未設定", nowYear);
+        const std = dateField(f.standardDate, true, "未設定", nowYear);
+        const axleNames = ["前前", "前後", "後前", "後後"];
+        const axleItems = f.axle.map((a, i) => ({
+          key: "axle_" + i, label: "軸重(" + axleNames[i] + ")", unit: "kg",
+          value: isBlankCode(a) ? "" : String(Number(a) * 10),
+          hint: isBlankCode(a) ? "ゼロ(設定なし)" : "コード値 " + a + " × 10kg"
+        }));
+        const code = (v, map) => ({ value: v.trim(), hint: map[v.trim()] || (v.trim() ? "コード表にない値" : "") });
+        const num = v => (isBlankCode(v) ? "" : v.trim());
+        g3.items.push(
+          { key: "stamp", label: "車台番号打刻位置", value: isBlankCode(f.stamp) ? "" : f.stamp, hint: isBlankCode(f.stamp) ? "コードなし" : "" },
+          { key: "type_no", label: "型式指定番号・類別区分番号", value: f.typeNo, hint: f.typeNo ? "" : "設定なし(一般車)" },
+          { key: "expiry", label: "有効期間の満了する日", value: exp.value, hint: exp.hint },
+          { key: "first_reg", label: "初度登録年月", value: reg.value, hint: reg.hint },
+          { key: "model", label: "型式", value: f.model, hint: modelNote(f.model) },
+          ...axleItems,
+          Object.assign({ key: "noise", label: "騒音規制" }, code(f.noise, NOISE)),
+          { key: "near_noise", label: "近接排気騒音規制値", value: num(f.nearNoise), hint: isBlankCode(f.nearNoise) ? "値なし" : "" },
+          Object.assign({ key: "drive", label: "駆動方式" }, code(f.drive, DRIVE)),
+          Object.assign({ key: "opa", label: "オパシメータ測定車" }, code(f.opa, OPA)),
+          Object.assign({ key: "nox_mode", label: "NOx・PM測定モード" }, code(f.noxMode, NOXMODE)),
+          { key: "nox", label: "NOx値", value: num(f.nox), hint: isBlankCode(f.nox) ? "値なし" : "" },
+          { key: "pm", label: "PM値", value: num(f.pm), hint: isBlankCode(f.pm) ? "値なし" : "" },
+          { key: "std_date", label: "保安基準適用年月日", value: std.value, hint: std.hint },
+          Object.assign({ key: "fuel", label: "燃料の種類コード" }, code(f.fuel, FUEL))
+        );
+      }
+      groups.push(g3);
+      return groups;
+    }
+
+    const markBlanks = s => s.replace(/　/g, "△").replace(/ /g, "▲");
+    // ==== core:end ====================================================
+
+    // ================= 画面まわり =================
+    const $ = id => document.getElementById(id);
+    const srcInput = $("srcFile"), scanBtn = $("scanBtn"), statusEl = $("status");
+    const preview = $("preview"), previewBox = $("previewBox");
+    const pctx = preview.getContext("2d", { willReadFrequently: true });
+
+    let source = null;     // {kind:"pdf", pdf} | {kind:"image", file}
+    let scanning = false;
+
+    function setStatus(msg, cls) {
+      statusEl.textContent = msg;
+      statusEl.className = cls || "";
+    }
+
+    // ---- ファイル → キャンバス ----
+    async function renderAttempt(a) {
+      if (a.kind === "pdf") {
+        const page = await source.pdf.getPage(a.page);
+        const vp = page.getViewport({ scale: a.scale });
+        preview.width = Math.floor(vp.width);
+        preview.height = Math.floor(vp.height);
+        pctx.fillStyle = "#fff";
+        pctx.fillRect(0, 0, preview.width, preview.height);
+        await page.render({ canvasContext: pctx, viewport: vp }).promise;
+      } else {
+        const bmp = await createImageBitmap(source.file);
+        const s = Math.min(a.scale, 4500 / Math.max(bmp.width, bmp.height));
+        preview.width = Math.round(bmp.width * s);
+        preview.height = Math.round(bmp.height * s);
+        pctx.fillStyle = "#fff";
+        pctx.fillRect(0, 0, preview.width, preview.height);
+        pctx.imageSmoothingEnabled = true;
+        pctx.imageSmoothingQuality = "high";
+        pctx.drawImage(bmp, 0, 0, preview.width, preview.height);
+        if (bmp.close) bmp.close();
+      }
+    }
+
+    async function buildAttempts() {
+      if (source.kind === "pdf") {
+        const attempts = [];
+        const n = Math.min(source.pdf.numPages, 3);
+        for (let p = 1; p <= n; p++) {
+          const page = await source.pdf.getPage(p);
+          const v1 = page.getViewport({ scale: 1 });
+          const cap = Math.sqrt(14e6 / (v1.width * v1.height)); // スマホのキャンバス上限対策
+          const scales = [...new Set([4, 6].map(s => Math.min(s, cap).toFixed(2)))].map(Number);
+          scales.forEach(s => attempts.push({ kind: "pdf", page: p, scale: s }));
+        }
+        return attempts;
+      }
+      return [{ kind: "image", scale: 1 }, { kind: "image", scale: 2 }];
+    }
+
+    async function detect() {
+      const img = pctx.getImageData(0, 0, preview.width, preview.height);
+      const rs = await ZXingWASM.readBarcodes(img, {
+        formats: ["QRCode"], maxNumberOfSymbols: 12,
+        tryHarder: true, tryRotate: true, tryDownscale: true
+      });
+      return rs.filter(r => r.isValid).map(r => ({
+        bytes: r.bytes, sequenceIndex: r.sequenceIndex, sequenceSize: r.sequenceSize,
+        sequenceId: r.sequenceId, position: r.position
+      }));
+    }
+
+    function drawOverlay(best) {
+      const lw = Math.max(4, preview.width / 280);
+      pctx.lineWidth = lw;
+      pctx.font = "bold " + Math.round(lw * 5) + "px sans-serif";
+      best.symbols.forEach((s, i) => {
+        const pos = s.position;
+        if (!pos) return;
+        const used = best.merged.usedIdx.has(i);
+        pctx.strokeStyle = used ? "#1e9e4a" : "#e08a00";
+        pctx.fillStyle = pctx.strokeStyle;
+        pctx.beginPath();
+        pctx.moveTo(pos.topLeft.x, pos.topLeft.y);
+        pctx.lineTo(pos.topRight.x, pos.topRight.y);
+        pctx.lineTo(pos.bottomRight.x, pos.bottomRight.y);
+        pctx.lineTo(pos.bottomLeft.x, pos.bottomLeft.y);
+        pctx.closePath();
+        pctx.stroke();
+        const m = best.merged;
+        let label = "";
+        if (m.code2 && m.code2.order.includes(i)) label = "コード2-" + (m.code2.order.indexOf(i) + 1);
+        else if (m.code3 && m.code3.order.includes(i)) label = "コード3-" + (m.code3.order.indexOf(i) + 1);
+        if (label) pctx.fillText(label, pos.topLeft.x, Math.max(lw * 5, pos.topLeft.y - lw * 2));
+      });
+    }
+
+    // ---- スキャン本体 ----
+    async function runScan() {
+      if (!source || scanning) return;
+      if (typeof ZXingWASM === "undefined") {
+        setStatus("QR読み取りライブラリ(zxing-wasm)を読み込めませんでした。ネットワークを確認して再読み込みしてください。", "err");
+        return;
+      }
+      scanning = true;
+      scanBtn.disabled = true;
+      try {
+        const attempts = await buildAttempts();
+        let best = null, lastAttempt = null;
+        for (let i = 0; i < attempts.length; i++) {
+          const a = attempts[i];
+          setStatus("QRコードを検索中... (" + (i + 1) + "/" + attempts.length + ")");
+          await new Promise(r => setTimeout(r, 0));
+          await renderAttempt(a);
+          lastAttempt = a;
+          const symbols = await detect();
+          const merged = mergeSymbols(symbols);
+          const score = (merged.code2 ? 1 : 0) + (merged.code3 ? 1 : 0);
+          if (!best || score > best.score || (score === best.score && symbols.length > best.symbols.length)) {
+            best = { attempt: a, symbols, merged, score };
+          }
+          if (score === 2) break;
+        }
+        if (best && lastAttempt !== best.attempt) await renderAttempt(best.attempt);
+        previewBox.hidden = false;
+        if (best) drawOverlay(best);
+        showResult(best);
+      } catch (e) {
+        console.error(e);
+        setStatus("読み取り中にエラーが発生しました: " + (e.message || e), "err");
+      } finally {
+        scanning = false;
+        scanBtn.disabled = false;
+      }
+    }
+
+    // ---- 結果表示 ----
+    function badge(text, cls) {
+      const b = document.createElement("span");
+      b.className = "badge " + (cls || "");
+      b.textContent = text;
+      return b;
+    }
+
+    function showResult(best) {
+      const summary = $("summary"), notesEl = $("notes"), raw = $("rawView");
+      summary.replaceChildren();
+      notesEl.replaceChildren();
+
+      if (!best || best.symbols.length === 0) {
+        summary.append(badge("QRコードを検出できませんでした", "ng"));
+        raw.textContent = "検出なし";
+        renderForm([]);
+        setStatus("QRコードを検出できませんでした。PDFの画質・コードの大きさ・撮影時のピントを確認してください。", "err");
+        return;
+      }
+
+      const m = best.merged;
+      summary.append(badge("検出QR " + best.symbols.length + " 個"));
+      summary.append(m.code2 ? badge("二次元コード2 ✓ (" + m.code2.method + ")", "ok") : badge("二次元コード2 未検出", "ng"));
+      summary.append(m.code3 ? badge("二次元コード3 ✓ (" + m.code3.method + ")", "ok") : badge("二次元コード3 未検出", "ng"));
+
+      const notes = m.notes.slice();
+      for (const [name, c] of [["二次元コード2", m.code2], ["二次元コード3", m.code3]]) {
+        if (c && c.parsed.errors.length) {
+          notes.push(name + ": 項目の解釈に問題があります → " + c.parsed.errors.join(" / "));
+        }
+      }
+      notes.forEach(t => { const li = document.createElement("li"); li.textContent = t; notesEl.append(li); });
+
+      const lines = [];
+      if (m.code2) lines.push("【二次元コード2】\n" + markBlanks(m.code2.text));
+      if (m.code3) lines.push("【二次元コード3】\n" + markBlanks(m.code3.text));
+      raw.textContent = lines.length ? lines.join("\n\n") : "結合できたコードがありません";
+
+      renderForm(buildFields(m));
+
+      if (m.code2 && m.code3 && !notes.some(t => t.includes("問題があります"))) {
+        setStatus("完了: 二次元コード2・3を読み取り、項目に分解しました。", "ok");
+      } else if (m.code2 || m.code3) {
+        setStatus("一部のみ読み取れました。検出結果の注意事項を確認してください。", "warn");
+      } else {
+        setStatus("QRは検出しましたが、車検証の二次元コード2・3として結合できませんでした。", "err");
+      }
+    }
+
+    function renderForm(groups) {
+      const area = $("formArea");
+      area.replaceChildren();
+      const has = groups.some(g => g.items.length);
+      ["copyTsvBtn", "copyJsonBtn", "csvBtn"].forEach(id => { $(id).disabled = !has; });
+      if (!has) {
+        const p = document.createElement("p");
+        p.className = "note";
+        p.textContent = "転記できる項目がありません。";
+        area.append(p);
+        return;
+      }
+      for (const g of groups) {
+        const h = document.createElement("h3");
+        h.textContent = g.title;
+        area.append(h);
+        if (!g.items.length) {
+          const p = document.createElement("p");
+          p.className = "note";
+          p.textContent = "このコードは読み取れていません。";
+          area.append(p);
+          continue;
+        }
+        const grid = document.createElement("div");
+        grid.className = "fields";
+        for (const it of g.items) {
+          const full = it.label + (it.unit ? "(" + it.unit + ")" : "");
+          const id = "f_" + it.key;
+          const row = document.createElement("div");
+          row.className = "field";
+          const lab = document.createElement("label");
+          lab.htmlFor = id;
+          lab.textContent = full;
+          const wrap = document.createElement("div");
+          wrap.className = "inputrow";
+          const inp = document.createElement("input");
+          inp.type = "text"; inp.id = id; inp.value = it.value || "";
+          inp.dataset.key = it.key; inp.dataset.label = full;
+          inp.autocomplete = "off";
+          const btn = document.createElement("button");
+          btn.type = "button"; btn.className = "mini"; btn.textContent = "コピー";
+          btn.dataset.copyFor = id;
+          wrap.append(inp, btn);
+          row.append(lab, wrap);
+          if (it.hint) {
+            const hint = document.createElement("div");
+            hint.className = "hint";
+            hint.textContent = it.hint;
+            row.append(hint);
+          }
+          grid.append(row);
+        }
+        area.append(grid);
+      }
+    }
+
+    // ---- 出力(コピー・CSV) ----
+    function collect() {
+      return [...document.querySelectorAll("#formArea input")].map(i => ({
+        key: i.dataset.key, label: i.dataset.label, value: i.value
+      }));
+    }
+
+    async function copyText(text, okMsg) {
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (e) {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.append(ta);
+        ta.select();
+        let ok = false;
+        try { ok = document.execCommand("copy"); } catch (e2) { /* noop */ }
+        ta.remove();
+        if (!ok) { setStatus("コピーできませんでした。ブラウザの権限を確認してください。", "err"); return; }
+      }
+      setStatus(okMsg, "ok");
+    }
+
+    const csvCell = s => '"' + String(s).replace(/"/g, '""') + '"';
+
+    $("formArea").addEventListener("click", e => {
+      const b = e.target.closest("button[data-copy-for]");
+      if (!b) return;
+      const inp = $(b.dataset.copyFor);
+      copyText(inp.value, "「" + inp.dataset.label + "」をコピーしました。");
+    });
+
+    $("copyTsvBtn").addEventListener("click", () => {
+      const rows = collect();
+      copyText(rows.map(r => r.label + "\t" + r.value).join("\n"), "全項目をタブ区切りでコピーしました。");
+    });
+
+    $("copyJsonBtn").addEventListener("click", () => {
+      const obj = {};
+      collect().forEach(r => { obj[r.key] = r.value; });
+      copyText(JSON.stringify(obj, null, 2), "JSONでコピーしました。");
+    });
+
+    $("csvBtn").addEventListener("click", () => {
+      const rows = collect();
+      const csv = rows.map(r => csvCell(r.label)).join(",") + "\r\n" + rows.map(r => csvCell(r.value)).join(",") + "\r\n";
+      const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "shakensho_" + new Date().toISOString().slice(0, 10) + ".csv";
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    });
+
+    // ---- ファイル選択・操作 ----
     pdfjsLib.GlobalWorkerOptions.workerSrc =
       "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
-    const pdfInput = document.getElementById("pdfFile");
-    const scanBtn = document.getElementById("scanBtn");
-    const status = document.getElementById("status");
-    const preview = document.getElementById("preview");
-    const ctx = preview.getContext("2d", {
-      willReadFrequently: true
-    });
-    const results = document.getElementById("results");
-
-    let currentPdf = null;
-    let decodedCodes = [];
-
-    function setStatus(message) {
-      status.textContent = message;
+    function resetResult() {
+      $("summary").replaceChildren(badge("未読み取り"));
+      $("notes").replaceChildren();
+      $("rawView").textContent = "まだ読み取り結果はありません。";
+      const area = $("formArea");
+      area.replaceChildren();
+      const p = document.createElement("p");
+      p.className = "note";
+      p.textContent = "読み取り後に項目が表示されます。";
+      area.append(p);
+      ["copyTsvBtn", "copyJsonBtn", "csvBtn"].forEach(id => { $(id).disabled = true; });
     }
 
-    function showResults() {
-      results.replaceChildren();
-
-      if (decodedCodes.length === 0) {
-        const message = document.createElement("p");
-        message.className = "note";
-        message.textContent = "QRコードはまだ検出されていません。";
-        results.appendChild(message);
-        return;
-      }
-
-      decodedCodes.forEach((code, index) => {
-        const item = document.createElement("div");
-        item.className = "result-item";
-
-        const title = document.createElement("strong");
-        title.textContent = "検出コード " + (index + 1);
-
-        const value = document.createElement("pre");
-        value.textContent = code;
-
-        item.append(title, value);
-        results.appendChild(item);
-      });
-    }
-
-    function addCode(text) {
-      if (!decodedCodes.includes(text)) {
-        decodedCodes.push(text);
-      }
-    }
-
-    async function scanCanvas() {
-      decodedCodes = [];
-      showResults();
-
-      const width = preview.width;
-      const height = preview.height;
-
-      // QRコード全体が領域内に入るよう、重なりを持たせて走査
-      const tileSize = 220;
-      const step = 100;
-
-      const tile = document.createElement("canvas");
-      tile.width = tileSize;
-      tile.height = tileSize;
-
-      const tileCtx = tile.getContext("2d", {
-        willReadFrequently: true
-      });
-
-      let checked = 0;
-
-      for (let y = 0; y < height; y += step) {
-        for (let x = 0; x < width; x += step) {
-          const w = Math.min(tileSize, width - x);
-          const h = Math.min(tileSize, height - y);
-
-          tileCtx.clearRect(0, 0, tileSize, tileSize);
-          tileCtx.drawImage(
-            preview,
-            x, y, w, h,
-            0, 0, w, h
-          );
-
-          const image = tileCtx.getImageData(
-            0, 0, w, h
-          );
-
-          const code = jsQR(
-            image.data,
-            image.width,
-            image.height,
-            { inversionAttempts: "attemptBoth" }
-          );
-
-          if (code && code.data) {
-            addCode(code.data);
-          }
-
-          checked++;
-
-          // スマホのブラウザが固まりにくいよう時々処理を譲る
-          if (checked % 8 === 0) {
-            setStatus(
-              "QRコードを検索中... 検出 " +
-              decodedCodes.length + " 件"
-            );
-            await new Promise(resolve => setTimeout(resolve, 0));
-          }
-        }
-      }
-
-      showResults();
-
-      if (decodedCodes.length > 0) {
-        setStatus(
-          "完了：QRコードを " + decodedCodes.length +
-          " 種類検出しました。"
-        );
-      } else {
-        setStatus(
-          "QRコードを検出できませんでした。" +
-          "PDFの画質やコードの大きさを確認してください。"
-        );
-      }
-    }
-
-    pdfInput.addEventListener("change", async () => {
-      const file = pdfInput.files[0];
+    srcInput.addEventListener("change", async () => {
+      const file = srcInput.files[0];
       if (!file) return;
-
-      if (file.type !== "application/pdf" &&
-          !file.name.toLowerCase().endsWith(".pdf")) {
-        setStatus("PDFファイルを選択してください。");
-        return;
-      }
-
-      currentPdf = null;
+      source = null;
       scanBtn.disabled = true;
-      preview.hidden = true;
-      decodedCodes = [];
-      showResults();
-
+      previewBox.hidden = true;
+      resetResult();
       try {
-        setStatus("PDFを読み込んでいます...");
-
-        const bytes = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({
-          data: new Uint8Array(bytes)
-        }).promise;
-
-        currentPdf = pdf;
-
-        if (pdf.numPages < 1) {
-          throw new Error("PDFにページがありません。");
-        }
-
-        setStatus("1ページ目を画像に変換しています...");
-
-        const page = await pdf.getPage(1);
-        const viewport = page.getViewport({ scale: 4 });
-
-        preview.width = Math.floor(viewport.width);
-        preview.height = Math.floor(viewport.height);
-        preview.hidden = false;
-
-        await page.render({
-          canvasContext: ctx,
-          viewport: viewport
-        }).promise;
-
-        scanBtn.disabled = false;
-        setStatus("PDFを読み込みました。QRコードを検索します。");
-
-        await scanCanvas();
-
-      } catch (error) {
-        console.error(error);
-        setStatus(
-          "PDFを処理できませんでした: " +
-          (error.message || String(error))
-        );
-      }
-    });
-
-    scanBtn.addEventListener("click", async () => {
-      if (!currentPdf) return;
-
-      scanBtn.disabled = true;
-      try {
-        await scanCanvas();
-      } finally {
-        scanBtn.disabled = false;
-      }
-    });
-
-    document.getElementById("copyBtn").addEventListener(
-      "click",
-      async () => {
-        if (decodedCodes.length === 0) {
-          setStatus("コピーする読み取り結果がありません。");
+        const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+        if (isPdf) {
+          setStatus("PDFを読み込んでいます...");
+          const bytes = new Uint8Array(await file.arrayBuffer());
+          const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+          if (pdf.numPages < 1) throw new Error("PDFにページがありません。");
+          source = { kind: "pdf", pdf };
+        } else if (file.type.startsWith("image/")) {
+          source = { kind: "image", file };
+        } else {
+          setStatus("PDFまたは画像ファイルを選択してください。", "err");
           return;
         }
-
-        const text = decodedCodes
-          .map((code, i) => "検出コード " + (i + 1) + "\n" + code)
-          .join("\n\n");
-
-        try {
-          await navigator.clipboard.writeText(text);
-          setStatus("読み取り結果をコピーしました。");
-        } catch (error) {
-          setStatus(
-            "コピーできませんでした。ブラウザの権限を確認してください。"
-          );
-        }
+        await runScan();
+      } catch (e) {
+        console.error(e);
+        setStatus("ファイルを処理できませんでした: " + (e.message || e), "err");
+      } finally {
+        if (source) scanBtn.disabled = false;
+        srcInput.value = "";
       }
-    );
+    });
 
-    document.getElementById("clearBtn").addEventListener(
-      "click",
-      () => {
-        decodedCodes = [];
-        showResults();
-        setStatus("読み取り結果をクリアしました。");
-      }
-    );
+    scanBtn.addEventListener("click", () => { resetResult(); runScan(); });
+
+    $("clearBtn").addEventListener("click", () => {
+      source = null;
+      scanBtn.disabled = true;
+      previewBox.hidden = true;
+      resetResult();
+      setStatus("結果をクリアしました。ファイルを選択してください。");
+    });
   </script>
 </body>
 </html>
