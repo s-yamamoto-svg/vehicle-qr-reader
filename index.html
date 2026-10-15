@@ -249,8 +249,8 @@
       const height = preview.height;
 
       // QRコード全体が領域内に入るよう、重なりを持たせて走査
-      const tileSize = Math.min(360, Math.max(width, height));
-      const step = Math.max(100, Math.floor(tileSize * 0.55));
+      const tileSize = 220;
+      const step = 100;
 
       const tile = document.createElement("canvas");
       tile.width = tileSize;
@@ -350,7 +350,7 @@
         setStatus("1ページ目を画像に変換しています...");
 
         const page = await pdf.getPage(1);
-        const viewport = page.getViewport({ scale: 2.5 });
+        const viewport = page.getViewport({ scale: 4 });
 
         preview.width = Math.floor(viewport.width);
         preview.height = Math.floor(viewport.height);
