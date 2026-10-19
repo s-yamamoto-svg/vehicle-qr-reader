@@ -1,4 +1,4 @@
-/* 車検証QR読み取り(ロングラン補償申込フォーム組み込み用) v1.0.3
+/* 車検証QR読み取り(ロングラン補償申込フォーム組み込み用) v1.0.4
    国土交通省「二次元コード項目定義」(2023.1版)に基づき、二次元コード2・3を結合して項目に分解します。
    読み取りは端末のブラウザ内だけで行い、画像や結果を外部へ送信しません。 */
 (function () {
@@ -402,14 +402,14 @@ function labelMap(list, merged) {
 
 // ================= ロングラン補償申込フォーム組み込み用 =================
 // index.php の「車検証のQRコードから入力」ボタンで読み取り画面を開き、結果を確認してから既存の入力欄へ転記する。
-const VERSION = "1.0.3";
+const VERSION = "1.0.4";
 // このスクリプト自身の置き場所(vendor/ のファイルを同じ場所から読み込む)
 const SCRIPT_BASE = (function () {
   try { return new URL(".", document.currentScript.src).href; } catch (e) { return ""; }
 })();
 
 // 転記先の入力欄(index.php の id)
-const FIELD = { regno: "f_regno", chassis: "f_chassis", era: "f_era", year: "f_year", month: "f_month", hv: "f_hv" };
+const FIELD = { regno: "f_regno", chassis: "f_chassis", era: "f_era", year: "f_year", month: "f_month", hv: "f_hv", displacement: "f_displacement" };
 
 const CSS = `
 #sqModal{position:fixed;inset:0;z-index:9999;display:flex;justify-content:center;align-items:stretch;background:rgba(14,28,44,.74);font-family:"Yu Gothic UI","Meiryo",sans-serif;color:#26303a;line-height:1.6}
@@ -488,8 +488,19 @@ function hvFromEngine(engine) {
 }
 
 // 結合済みQR(コード2・3)から、フォームへ転記する値を作る
+// 軽自動車の排気量(660cc固定)。
+// 判定: 二次元コード2が「K/22/」で始まる(軽自動車検査協会の様式。仕様書のシステムID "K")。普通車は国交省の様式で「2/」で始まる。
+// 自動入力しない場合: 電気自動車(燃料コード05。排気量なし) / 初度検査が1990年2月より前(規格が660ccになる前の550cc・360cc)。
+function keiDisplacement(merged, code2Ok, v, notes) {
+  if (!(merged.code2 && merged.code2.kei && code2Ok)) return null;
+  if (v.fuel && v.fuel.value === "05") { notes.push("電気自動車のため、排気量は自動入力しません。"); return null; }
+  const fr = v.first_reg && v.first_reg.value;   // "YYYY-MM"
+  if (fr && fr < "1990-02") { notes.push("初度検査が1990年1月以前の軽自動車は、排気量が660ccではない場合があるため、排気量は自動入力しません。"); return null; }
+  return { value: 660, label: "660cc(軽自動車のため固定値)", fuelKnown: !!(v.fuel && v.fuel.value), regKnown: !!fr };
+}
+
 function toFormValues(merged, nowYear) {
-  const out = { regno: null, chassis: null, firstReg: null, hv: null, refs: [], notes: [] };
+  const out = { regno: null, chassis: null, firstReg: null, hv: null, displacement: null, refs: [], notes: [] };
   const good = c => c && c.parsed.errors.length === 0;
   const v = {};
   buildFields({ code2: good(merged.code2) ? merged.code2 : null, code3: good(merged.code3) ? merged.code3 : null }, nowYear)
@@ -509,6 +520,7 @@ function toFormValues(merged, nowYear) {
     else out.notes.push("初度登録年月(" + v.first_reg.value + ")は、フォームの元号(令和・平成)に当てはまらないため自動入力しません。");
   }
   out.hv = hvFromEngine(v.engine && v.engine.value);
+  out.displacement = keiDisplacement(merged, good(merged.code2), v, out.notes);
   if (v.model && v.model.value) out.refs.push(["型式", v.model.value]);
   if (v.fuel && v.fuel.hint) out.refs.push(["燃料の種類", v.fuel.hint]);
   return out;
@@ -980,6 +992,7 @@ function showResult(ev) {
   addRow("車台番号", vals.chassis, val(FIELD.chassis));
   addRow("初度登録年月", vals.firstReg && vals.firstReg.label, currentFirstReg());
   addRow("HV車", vals.hv && vals.hv.label, vals.hv ? val(FIELD.hv) : "", vals.hv && vals.hv.value);
+  if (vals.displacement) addRow("排気量(cc)", vals.displacement.label, val(FIELD.displacement), String(vals.displacement.value));
   box.append(rows);
 
   if (vals.refs.length) {
@@ -998,7 +1011,10 @@ function showResult(ev) {
   }
   const p = document.createElement("p");
   p.className = "sq-resnote";
-  p.textContent = "車名・走行距離・排気量は車検証のQRコードに含まれないため、手入力してください。" + (vals.hv ? "HV車は、原動機型式にハイフン区切りで2つ以上の記載があるかで判定しています。" : "");
+  p.textContent = (vals.displacement
+    ? "車名・走行距離は車検証のQRコードに含まれないため、手入力してください。排気量は、軽自動車のため660ccを入力します(実際の排気量と異なる場合は修正してください)。"
+    : "車名・走行距離・排気量は車検証のQRコードに含まれないため、手入力してください。") +
+    (vals.hv ? "HV車は、原動機型式にハイフン区切りで2つ以上の記載があるかで判定しています。" : "");
   box.append(p);
   if (vals.notes.length) {
     const ul = document.createElement("ul");
@@ -1007,7 +1023,7 @@ function showResult(ev) {
     box.append(ul);
   }
 
-  const any = !!(vals.regno || vals.chassis || vals.firstReg || vals.hv);
+  const any = !!(vals.regno || vals.chassis || vals.firstReg || vals.hv || vals.displacement);
   $("sqApply").disabled = !any;
   setPhase("result");
   setStatus(ev.complete ? "読み取りが完了しました。内容を確認して、フォームに入力してください。" : "読み取れた分を表示しています。内容を確認してください。", ev.complete ? "ok" : "warn");
@@ -1039,10 +1055,11 @@ function apply() {
     if (a && b && c) filled.push("初度登録年月");
   }
   if (v.hv && setField(FIELD.hv, v.hv.value)) filled.push("HV車");
+  if (v.displacement && setField(FIELD.displacement, v.displacement.value)) filled.push("排気量(660cc)");
   closeModal(false);
   const n = document.getElementById("sqNote");
   if (n) {
-    n.textContent = "車検証から入力しました: " + filled.join("・") + "。内容を確認し、車名・走行距離・排気量などを入力してください。";
+    n.textContent = "車検証から入力しました: " + filled.join("・") + "。内容を確認し、車名・走行距離" + (v.displacement ? "" : "・排気量") + "などを入力してください。";
     n.classList.add("sq-done");
   }
   const target = document.getElementById(FIELD.regno);
