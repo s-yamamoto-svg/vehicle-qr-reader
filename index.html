@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ロングラン補償申込フォーム</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:"Yu Gothic UI","Meiryo",sans-serif;background:linear-gradient(180deg,#dde4ec 0%,#e9edf1 220px);margin:0;padding:32px 16px;color:#26303a}
+.window{max-width:700px;margin:0 auto;background:#f7f9fa;border:1px solid #c3cbd4;border-radius:10px;box-shadow:0 10px 30px rgba(20,40,60,.16),0 2px 6px rgba(20,40,60,.08);overflow:hidden}
+.titlebar{background:linear-gradient(135deg,#1B6BB5 0%,#124D82 100%);color:#fff;padding:18px 24px;font-size:19px;font-weight:600;letter-spacing:.02em}
+.titlebar small{display:block;font-size:11.5px;font-weight:400;opacity:.85;margin-top:4px;letter-spacing:.03em}
+.content{padding:24px 26px 28px}
+fieldset{border:1px solid #d5dce3;border-radius:8px;margin:0 0 18px;padding:14px 18px 18px;background:#fff;box-shadow:0 1px 3px rgba(20,40,60,.05)}
+legend{font-size:12.5px;font-weight:700;color:#124D82;padding:0 8px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px}
+.field{margin-bottom:4px}.field.full{grid-column:1/-1}
+label{display:block;font-size:11.5px;font-weight:500;color:#5c6874;margin-bottom:4px}
+input[type=text],input[type=number],input[type=date],input[type=file],select{width:100%;padding:8px 10px;font-size:13.5px;border:1px solid #c3cbd4;border-radius:5px;background:#fbfcfd}
+input:focus,select:focus{outline:none;border-color:#1B6BB5;background:#fff;box-shadow:0 0 0 3px rgba(27,107,181,.14)}
+.inline3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.notice{display:flex;gap:10px;background:#fff8e6;border:1px solid #ecd48f;border-left:4px solid #d99a1f;border-radius:6px;padding:12px 14px;font-size:12.5px;color:#5c4a12;margin-bottom:20px;line-height:1.7}
+.notice-icon{flex-shrink:0;width:20px;height:20px;border-radius:50%;background:#d99a1f;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.shop-remember{display:flex;align-items:center;gap:8px;margin-top:6px;padding-top:10px;border-top:1px dashed #e0e5ea}
+.shop-remember input{width:15px;height:15px;accent-color:#1B6BB5}
+.actions{display:flex;gap:10px;justify-content:flex-end;margin-top:4px}
+button{display:inline-flex;align-items:center;gap:6px;color:#fff;border:0;border-radius:6px;padding:11px 22px;font-size:13.5px;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+button:hover{filter:brightness(1.06)}button:disabled{opacity:.55;cursor:not-allowed}
+.btn-main{background:linear-gradient(135deg,#1B6BB5,#124D82)}
+.btn-sub{background:#687684}
+.required{color:#c0392b;font-weight:700}
+.file-note{font-size:11px;color:#7b8792;margin-top:5px;line-height:1.6}
+.footnote{font-size:11px;color:#8a95a0;margin-top:14px;line-height:1.6;border-top:1px solid #e5e9ed;padding-top:12px}
+#confirmArea{display:none}
+.confirm-box{background:#fff;border:1px solid #cfd8e0;border-radius:8px;padding:18px;margin-bottom:18px}
+.confirm-title{font-weight:700;color:#124D82;margin-bottom:12px}
+.confirm-list{font-size:13px;line-height:1.8;white-space:pre-wrap}
+.error{display:none;background:#fff0f0;border:1px solid #e5bcbc;color:#8b1e1e;padding:10px 12px;border-radius:6px;margin-bottom:15px;font-size:12px}
+@media(max-width:520px){.row,.inline3{grid-template-columns:1fr}.actions{flex-direction:column}button{width:100%;justify-content:center}}
+</style>
+</head>
+<body>
+<div style="background:#fff3cd;color:#664d03;padding:8px 12px;font-size:13px;text-align:center">プレビュー版: 画面とQR転記の確認用です。送信は動作しません。</div>
+<div class="window">
+<div class="titlebar">
+ロングラン補償申込フォーム
+<small>入力後、確認画面を経由して申込メールを送信します</small>
+</div>
+
+<div class="content">
+<div class="notice">
+<div class="notice-icon">!</div>
+<div>
+<b>ご利用方法</b><br>
+① 下記項目を入力してください。<br>
+② 申込書類一式（PDF・JPG・JPEG・PNG）を添付してください。<br>
+③ 「入力内容を確認する」で内容を確認し、「この内容で送信」を押してください。
+</div>
+</div>
+
+<div id="errorArea" class="error"></div>
+
+<form id="applicationForm" action="#" method="post" enctype="multipart/form-data" novalidate>
+<input type="hidden" name="csrf_token" value="preview">
+<!-- Bot対策用。通常の利用者には見えません -->
+<div style="position:absolute;left:-9999px;top:-9999px" aria-hidden="true">
+<label>Website<input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+</div>
+
+<fieldset>
+<legend>販売店情報</legend>
+<div class="row">
+<div class="field"><label>販売店名 <span class="required">*</span></label><input type="text" id="f_shopname" name="shopname" maxlength="100" required></div>
+<div class="field"><label>販売支店名</label><input type="text" id="f_branchname" name="branchname" maxlength="100"></div>
+<div class="field"><label>販売店電話番号 <span class="required">*</span></label><input type="text" id="f_tel" name="tel" maxlength="30" required></div>
+<div class="field"><label>販売店FAX番号</label><input type="text" id="f_fax" name="fax" maxlength="30"></div>
+<div class="field full shop-remember">
+<input type="checkbox" id="f_remember" checked>
+<label for="f_remember">この販売店情報を、次回このページを開いたときも自動入力する（このパソコン・ブラウザ限定）</label>
+</div>
+</div>
+</fieldset>
+
+<fieldset>
+<legend>お客様・車両情報</legend>
+<div class="row">
+<div class="field full">
+<button type="button" class="btn-main" id="btnScanQr">車検証のQRコードから入力</button>
+<div class="file-note" id="sqNote">車検証のQRコードを読み取ると、登録番号・車台番号・初度登録年月・HV車を自動入力します。車名・走行距離・排気量は手入力してください。</div>
+</div>
+<div class="field"><label>顧客氏名 <span class="required">*</span></label><input type="text" id="f_customer" name="customer" maxlength="100" required></div>
+<div class="field"><label>登録番号 <span class="required">*</span></label><input type="text" id="f_regno" name="regno" maxlength="50" required></div>
+<div class="field full"><label>車台番号 <span class="required">*</span></label><input type="text" id="f_chassis" name="chassis" maxlength="100" required></div>
+<div class="field"><label>車名 <span class="required">*</span></label><input type="text" id="f_carname" name="carname" maxlength="100" required></div>
+<div class="field"><label>走行距離(km) <span class="required">*</span></label><input type="number" id="f_mileage" name="mileage" min="0" max="99999999" required></div>
+<div class="field"><label>排気量(cc) <span class="required">*</span></label><input type="number" id="f_displacement" name="displacement" min="0" max="99999" required></div>
+<div class="field"><label>HV車</label>
+<select id="f_hv" name="hv"><option value="いいえ">いいえ</option><option value="はい">はい</option></select>
+</div>
+<div class="field full"><label>初度登録年月 <span class="required">*</span></label>
+<div class="inline3">
+<select id="f_era" name="era"><option value="令和">令和</option><option value="平成">平成</option></select>
+<input type="number" id="f_year" name="year" placeholder="年" min="1" max="99" required>
+<input type="number" id="f_month" name="month" placeholder="月" min="1" max="12" required>
+</div>
+</div>
+</div>
+</fieldset>
+
+<fieldset>
+<legend>保証内容</legend>
+<div class="row">
+<div class="field"><label>保証開始日 <span class="required">*</span></label><input type="date" id="f_startdate" name="startdate" required></div>
+<div class="field"><label>用途 <span class="required">*</span></label>
+<select id="f_usage" name="usage" onchange="updatePeriodOptions()"><option value="乗用">乗用</option><option value="貨物">貨物</option></select>
+</div>
+<div class="field full"><label>補償期間 <span class="required">*</span></label><select id="f_period" name="period"></select></div>
+</div>
+</fieldset>
+
+<fieldset>
+<legend>申込書類</legend>
+<div class="field full">
+<label>申込書類一式 <span class="required">*</span></label>
+<input type="file" id="f_files" name="attachments[]" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" multiple required>
+<div class="file-note">
+PDF / JPG / JPEG / PNGのみ。1ファイル10MBまで、最大5ファイル、合計20MBまでを想定しています。
+</div>
+</div>
+</fieldset>
+
+<div id="inputActions" class="actions">
+<button type="button" class="btn-main" id="btnConfirm">入力内容を確認する</button>
+</div>
+
+<div id="confirmArea">
+<div class="confirm-box">
+<div class="confirm-title">入力内容の確認</div>
+<div id="confirmText" class="confirm-list"></div>
+</div>
+<div class="actions">
+<button type="button" class="btn-sub" id="btnBack">入力画面に戻る</button>
+<button type="submit" class="btn-main" id="btnSend">この内容で送信</button>
+</div>
+</div>
+
+<div class="footnote">
+※ 送信時、選択したファイルはメール添付処理のためサーバーの一時領域で一時的に扱われます。申込書類をWebサーバー上に恒久保存する仕組みではありません。
+</div>
+</form>
+</div>
+</div>
+
+<script>
+const periodOptions={乗用:["24ヶ月","12ヶ月","3ヶ月"],貨物:["12ヶ月","3ヶ月"]};
+function updatePeriodOptions(){
+ const usage=document.getElementById("f_usage").value;
+ const s=document.getElementById("f_period");
+ s.innerHTML="";
+ periodOptions[usage].forEach(x=>{const o=document.createElement("option");o.value=x;o.textContent=x;s.appendChild(o);});
+}
+updatePeriodOptions();
+
+function v(id){
+ const e=document.getElementById(id);
+ return e.value.trim()===""?"（未入力）":e.value.trim();
+}
+const STORAGE_KEYS=["f_shopname","f_branchname","f_tel","f_fax"];
+function restoreShopInfo(){
+ STORAGE_KEYS.forEach(id=>{const x=localStorage.getItem("申込フォーム_"+id);if(x!==null)document.getElementById(id).value=x;});
+}
+function saveOrClearShopInfo(){
+ if(document.getElementById("f_remember").checked){
+  STORAGE_KEYS.forEach(id=>localStorage.setItem("申込フォーム_"+id,document.getElementById(id).value));
+ }else{
+  STORAGE_KEYS.forEach(id=>localStorage.removeItem("申込フォーム_"+id));
+ }
+}
+restoreShopInfo();
+
+function showError(msg){
+ const e=document.getElementById("errorArea");e.textContent=msg;e.style.display="block";window.scrollTo({top:0,behavior:"smooth"});
+}
+function hideError(){document.getElementById("errorArea").style.display="none";}
+
+document.getElementById("btnConfirm").addEventListener("click",()=>{
+ hideError();
+ const required=["f_shopname","f_tel","f_customer","f_regno","f_chassis","f_carname","f_mileage","f_displacement","f_year","f_month","f_startdate","f_files"];
+ for(const id of required){
+  const el=document.getElementById(id);
+  if(!el.value || (el.type==="file" && el.files.length===0)){showError("必須項目（*）が未入力です。ご確認ください。");el.focus();return;}
+ }
+ const files=[...document.getElementById("f_files").files];
+ if(files.length>5){showError("添付ファイルは最大5ファイルまでです。");return;}
+ let total=0;
+ for(const f of files){
+  total+=f.size;
+  if(f.size>10*1024*1024){showError("1ファイル10MBまでです。");return;}
+  if(!["application/pdf","image/jpeg","image/png"].includes(f.type)){showError("PDF / JPG / JPEG / PNGのみ添付できます。");return;}
+ }
+ if(total>20*1024*1024){showError("添付ファイルの合計サイズは20MBまでです。");return;}
+ saveOrClearShopInfo();
+
+ let text="";
+ text+="販売店名："+v("f_shopname")+"\n";
+ text+="販売支店名："+v("f_branchname")+"\n";
+ text+="販売店電話番号："+v("f_tel")+"\n";
+ text+="販売店FAX番号："+v("f_fax")+"\n\n";
+ text+="顧客氏名："+v("f_customer")+"\n";
+ text+="登録番号："+v("f_regno")+"\n";
+ text+="車台番号："+v("f_chassis")+"\n";
+ text+="車名："+v("f_carname")+"\n";
+ text+="初度登録年月："+v("f_era")+v("f_year")+"年"+v("f_month")+"月\n";
+ text+="走行距離："+v("f_mileage")+"km\n";
+ text+="排気量："+v("f_displacement")+"cc\n";
+ text+="HV車："+v("f_hv")+"\n\n";
+ text+="保証開始日："+v("f_startdate")+"\n";
+ text+="用途："+v("f_usage")+"\n";
+ text+="補償期間："+v("f_period")+"\n\n";
+ text+="添付："+files.map(f=>f.name+" ("+(f.size/1024/1024).toFixed(2)+"MB)").join("\n");
+
+ document.getElementById("confirmText").textContent=text;
+ document.getElementById("inputActions").style.display="none";
+ document.getElementById("confirmArea").style.display="block";
+ window.scrollTo({top:0,behavior:"smooth"});
+});
+
+document.getElementById("btnBack").addEventListener("click",()=>{
+ document.getElementById("confirmArea").style.display="none";
+ document.getElementById("inputActions").style.display="flex";
+ window.scrollTo({top:document.getElementById("applicationForm").offsetTop,behavior:"smooth"});
+});
+
+document.getElementById("applicationForm").addEventListener("submit",()=>{
+ document.getElementById("btnSend").disabled=true;
+ document.getElementById("btnSend").textContent="送信中...";
+});
+</script>
+<script>document.getElementById("applicationForm").addEventListener("submit",function(e){e.preventDefault();e.stopImmediatePropagation();alert("プレビュー版のため送信できません");},true);</script>
+<script src="qr/shaken-qr.js?v=1.0.3" defer></script>
+</body>
+</html>
