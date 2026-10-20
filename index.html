@@ -216,7 +216,7 @@ document.getElementById("btnConfirm").addEventListener("click",()=>{
  text+="HV車："+v("f_hv")+"\n\n";
  text+="保証開始日："+v("f_startdate")+"\n";
  text+="用途："+v("f_usage")+"\n";
- text+="補償期間："+v("f_period")+"\n\n";
+ text+="補償期間："+v("f_period")+"\n"+(window.FeeCalc?window.FeeCalc.confirmText():"")+"\n";
  text+="添付："+files.map(f=>f.name+" ("+(f.size/1024/1024).toFixed(2)+"MB)").join("\n");
 
  document.getElementById("confirmText").textContent=text;
@@ -238,5 +238,6 @@ document.getElementById("applicationForm").addEventListener("submit",()=>{
 </script>
 <script>document.getElementById("applicationForm").addEventListener("submit",function(e){e.preventDefault();e.stopImmediatePropagation();alert("プレビュー版のため送信できません");},true);</script>
 <script src="qr/shaken-qr.js?v=1.0.4" defer></script>
+<script src="fee/fee.js?v=1.0.0" defer></script>
 </body>
 </html>
