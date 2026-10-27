@@ -86,7 +86,7 @@ button:hover{filter:brightness(1.06)}button:disabled{opacity:.55;cursor:not-allo
 <div class="row">
 <div class="field full">
 <button type="button" class="btn-main" id="btnScanQr">車検証のQRコードから入力</button>
-<div class="file-note" id="sqNote">車検証のQRコードを読み取ると、登録番号・車台番号・初度登録年月・HV車を自動入力します。車名・走行距離は手入力してください(軽自動車は排気量660ccも自動入力します。普通車の排気量は手入力です)。</div>
+<div class="file-note" id="sqNote">車検証のQRコードを読み取ると、登録番号・車台番号・初度登録年月・HV車を自動入力します。走行距離は手入力してください(軽自動車は排気量660ccも自動入力します。普通車の排気量は手入力です)。</div>
 </div>
 <div class="field"><label>顧客氏名 <span class="required">*</span></label><input type="text" id="f_customer" name="customer" maxlength="100" required></div>
 <div class="field"><label>登録番号 <span class="required">*</span></label><input type="text" id="f_regno" name="regno" maxlength="50" required></div>
@@ -237,7 +237,7 @@ document.getElementById("applicationForm").addEventListener("submit",()=>{
 });
 </script>
 <script>document.getElementById("applicationForm").addEventListener("submit",function(e){e.preventDefault();e.stopImmediatePropagation();alert("プレビュー版のため送信できません");},true);</script>
-<script src="qr/shaken-qr.js?v=1.0.4" defer></script>
+<script src="qr/shaken-qr.js?v=1.1.0" defer></script>
 <script src="fee/fee.js?v=1.0.0" defer></script>
 </body>
 </html>
