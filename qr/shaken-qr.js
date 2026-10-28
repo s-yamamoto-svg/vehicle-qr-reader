@@ -1,4 +1,4 @@
-/* 車検証QR読み取り(ロングラン補償申込フォーム組み込み用) v1.2.0
+/* 車検証QR読み取り(ロングラン補償申込フォーム組み込み用) v1.3.0
    国土交通省「二次元コード項目定義」(2023.1版)に基づき、二次元コード2・3を結合して項目に分解します。
    読み取りは端末のブラウザ内だけで行い、画像や結果を外部へ送信しません。 */
 (function () {
@@ -402,7 +402,7 @@ function labelMap(list, merged) {
 
 // ================= ロングラン補償申込フォーム組み込み用 =================
 // index.php の「車検証のQRコードから入力」ボタンで読み取り画面を開き、結果を確認してから既存の入力欄へ転記する。
-const VERSION = "1.2.0";
+const VERSION = "1.3.0";
 // このスクリプト自身の置き場所(vendor/ のファイルを同じ場所から読み込む)
 const SCRIPT_BASE = (function () {
   try { return new URL(".", document.currentScript.src).href; } catch (e) { return ""; }
@@ -553,10 +553,15 @@ function buildNameIndex(data) {
   data.rows.forEach(r => map.set(r[0], { review: r[1] === 1, names: r[2] }));
   return { map, version: data.version };
 }
-function lookupOwnNames(index, model) {
+// 検索キーは車台番号のハイフンより前(例 ZWR80-1234567 → ZWR80)。型式の後半と食い違う車(型式 ZWR80W など)でも引ける。
+// 車台番号で見つからないときだけ、型式の後半(前半の排出ガス規制の区分は見ない)で引く。
+function lookupOwnNames(index, model, chassis) {
   if (!index) return null;
+  const c = String(chassis || "").normalize("NFKC").trim().toUpperCase();
+  const ck = c.indexOf("-") > 0 ? c.slice(0, c.indexOf("-")) : "";
+  if (ck && index.map.has(ck)) return index.map.get(ck);
   const m = String(model || "").normalize("NFKC").trim().toUpperCase();
-  return index.map.get(m.slice(m.indexOf("-") + 1)) || null;   // 型式の前半(排出ガス規制の区分)は見ない
+  return m ? (index.map.get(m.slice(m.indexOf("-") + 1)) || null) : null;
 }
 let namesP = null;
 function loadNames() {
@@ -602,9 +607,11 @@ function toFormValues(merged, nowYear, models, names) {
   out.hv = hvFromEngine(v.engine && v.engine.value);
   out.displacement = keiDisplacement(merged, good(merged.code2), v, out.notes);
   if (v.model && v.model.value) out.refs.push(["型式", v.model.value]);
-  if (v.model && v.model.value && merged.code3 && good(merged.code3)) {
-    const hit = models ? lookupModel(models, v.model.value) : null;
-    const own = lookupOwnNames(names, v.model.value);
+  const modelVal = v.model && v.model.value && merged.code3 && good(merged.code3) ? v.model.value : "";
+  const chassisVal = v.chassis && v.chassis.value ? v.chassis.value : "";
+  if (modelVal || chassisVal) {
+    const hit = models && modelVal ? lookupModel(models, modelVal) : null;
+    const own = lookupOwnNames(names, modelVal, chassisVal);
     if (!models && !names) out.notes.push("型式の表を読み込めなかったため、車名・用途は自動入力しません。");
     if (own) {
       out.carname = { cands: own.names.slice(), idx: 0, src: "own", review: own.review };
@@ -622,8 +629,8 @@ function toFormValues(merged, nowYear, models, names) {
       if (hit.cls) out.cls = { value: hit.cls, label: hit.cls + "(" + (hit.cls === "外車" ? "輸入車のため" : "国産車のため") + (hit.match === "suffix" ? "・推定" : "") + ")" };
       if (hit.maker) out.refs.push(["メーカー(参考表示のみ。転記も保持もしません)", hit.maker]);
     } else if (models || names) {
-      if (!own) out.notes.push("型式(" + String(v.model.value).toUpperCase() + ")は自社の登録実績にも型式一覧にも載っていないため、車名・用途は自動入力しません。");
-      else out.notes.push("型式一覧(OBD検査対象車型式一覧)に載っていないため、用途・車両区分は自動入力しません。");
+      if (!own) out.notes.push((modelVal ? "型式(" + modelVal.toUpperCase() : "車台番号(" + chassisVal.toUpperCase()) + ")は自社の登録実績にも型式一覧にも載っていないため、車名・用途は自動入力しません。");
+      else out.notes.push(modelVal ? "型式一覧(OBD検査対象車型式一覧)に載っていないため、用途・車両区分は自動入力しません。" : "型式(二次元コード3)が未読み取りのため、用途・車両区分は自動入力しません。");
     }
   }
   if (v.fuel && v.fuel.hint) out.refs.push(["燃料の種類", v.fuel.hint]);
