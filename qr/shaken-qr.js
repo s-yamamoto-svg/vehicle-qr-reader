@@ -1,4 +1,4 @@
-/* 車検証QR読み取り(ロングラン補償申込フォーム組み込み用) v1.1.0
+/* 車検証QR読み取り(ロングラン補償申込フォーム組み込み用) v1.2.0
    国土交通省「二次元コード項目定義」(2023.1版)に基づき、二次元コード2・3を結合して項目に分解します。
    読み取りは端末のブラウザ内だけで行い、画像や結果を外部へ送信しません。 */
 (function () {
@@ -402,7 +402,7 @@ function labelMap(list, merged) {
 
 // ================= ロングラン補償申込フォーム組み込み用 =================
 // index.php の「車検証のQRコードから入力」ボタンで読み取り画面を開き、結果を確認してから既存の入力欄へ転記する。
-const VERSION = "1.1.0";
+const VERSION = "1.2.0";
 // このスクリプト自身の置き場所(vendor/ のファイルを同じ場所から読み込む)
 const SCRIPT_BASE = (function () {
   try { return new URL(".", document.currentScript.src).href; } catch (e) { return ""; }
@@ -456,6 +456,10 @@ const CSS = `
 #sqModal .sq-row{background:#fff;border:1px solid #d5dce3;border-radius:8px;padding:10px 12px}
 #sqModal .sq-row dt{margin:0;font-size:11.5px;font-weight:500;color:#5c6874}
 #sqModal .sq-row dd{margin:2px 0 0;font-size:18px;font-weight:700;overflow-wrap:anywhere}
+#sqModal .sq-row dd.sq-choice{font-size:16px;font-weight:600}
+#sqModal .sq-row dd.sq-choice label{display:block;padding:6px 0}
+#sqModal .sq-row dd.sq-choice input{margin-right:6px}
+#sqModal .sq-src{margin-top:4px;font-size:11.5px;color:#5c6874}
 #sqModal .sq-row dd.none{font-size:13.5px;font-weight:500;color:#8a95a0}
 #sqModal .sq-row .cur{margin-top:2px;font-size:11.5px;font-weight:500;color:#9a5b00}
 #sqModal .sq-sub{margin:14px 0 6px;font-size:12px;font-weight:700;color:#124D82}
@@ -541,6 +545,28 @@ function loadModels() {
   return modelsP;
 }
 
+// ---- 自社の登録実績(型式の後半 → 車名の候補) ----
+// 過去の申込から作った表。件数は持たず、登録の多い順に並んだ名称だけを持つ。HVは名称に含めない(送信時にサーバーで付ける)。
+function buildNameIndex(data) {
+  if (!data || !Array.isArray(data.rows)) return null;
+  const map = new Map();
+  data.rows.forEach(r => map.set(r[0], { review: r[1] === 1, names: r[2] }));
+  return { map, version: data.version };
+}
+function lookupOwnNames(index, model) {
+  if (!index) return null;
+  const m = String(model || "").normalize("NFKC").trim().toUpperCase();
+  return index.map.get(m.slice(m.indexOf("-") + 1)) || null;   // 型式の前半(排出ガス規制の区分)は見ない
+}
+let namesP = null;
+function loadNames() {
+  if (!namesP) {
+    namesP = fetch(SCRIPT_BASE + "data/names.json?v=" + VERSION).then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(buildNameIndex).catch(() => { namesP = null; return null; });
+  }
+  return namesP;
+}
+
 // 結合済みQR(コード2・3)から、フォームへ転記する値を作る
 // 軽自動車の排気量(660cc固定)。
 // 判定: 二次元コード2が「K/22/」で始まる(軽自動車検査協会の様式。仕様書のシステムID "K")。普通車は国交省の様式で「2/」で始まる。
@@ -553,7 +579,7 @@ function keiDisplacement(merged, code2Ok, v, notes) {
   return { value: 660, label: "660cc(軽自動車のため固定値)", fuelKnown: !!(v.fuel && v.fuel.value), regKnown: !!fr };
 }
 
-function toFormValues(merged, nowYear, models) {
+function toFormValues(merged, nowYear, models, names) {
   const out = { regno: null, chassis: null, firstReg: null, hv: null, displacement: null, carname: null, usage: null, cls: null, refs: [], notes: [] };
   const good = c => c && c.parsed.errors.length === 0;
   const v = {};
@@ -577,17 +603,27 @@ function toFormValues(merged, nowYear, models) {
   out.displacement = keiDisplacement(merged, good(merged.code2), v, out.notes);
   if (v.model && v.model.value) out.refs.push(["型式", v.model.value]);
   if (v.model && v.model.value && merged.code3 && good(merged.code3)) {
-    const hit = lookupModel(models, v.model.value);
-    if (!models) out.notes.push("型式一覧を読み込めなかったため、車名・用途は自動入力しません。");
-    else if (hit.match === "none") out.notes.push("型式(" + hit.model + ")は型式一覧(OBD検査対象車型式一覧 " + (models.asof || "") + "時点)に載っていないため、車名・用途は自動入力しません。");
-    else {
+    const hit = models ? lookupModel(models, v.model.value) : null;
+    const own = lookupOwnNames(names, v.model.value);
+    if (!models && !names) out.notes.push("型式の表を読み込めなかったため、車名・用途は自動入力しません。");
+    if (own) {
+      out.carname = { cands: own.names.slice(), idx: 0, src: "own", review: own.review };
+      if (own.review) out.notes.push("この型式には車名の候補が複数あります(兄弟車など)。車名を選んでください。");
+    }
+    if (hit && hit.match !== "none") {
       if (hit.match === "suffix") out.notes.push("型式一覧に同じ型式がなかったため、型式の後半が同じ車から推定しています(前半は排出ガス規制の区分)。違う場合は直してください。");
-      if (hit.nickname) out.carname = { value: hit.nickname, label: hit.nickname + (hit.match === "suffix" ? "(推定)" : "") };
-      else out.notes.push("型式一覧に通称名の記載がないため、車名は自動入力しません。");
+      if (!own && hit.nickname) {
+        const c = hit.nickname.split("/").map(x => x.trim()).filter(Boolean);
+        out.carname = { cands: c, idx: 0, src: hit.match === "suffix" ? "obd-suffix" : "obd", review: c.length > 1 };
+        if (c.length > 1) out.notes.push("この型式には車名の候補が複数あります(兄弟車など)。車名を選んでください。");
+      } else if (!own) out.notes.push("型式一覧に通称名の記載がないため、車名は自動入力しません。");
       if (hit.usage) out.usage = { value: hit.usage, label: hit.usage + (hit.match === "suffix" ? "(推定)" : "") };
       else out.notes.push("用途を一つに決められないため(乗合など)、用途は自動入力しません。");
       if (hit.cls) out.cls = { value: hit.cls, label: hit.cls + "(" + (hit.cls === "外車" ? "輸入車のため" : "国産車のため") + (hit.match === "suffix" ? "・推定" : "") + ")" };
       if (hit.maker) out.refs.push(["メーカー(参考表示のみ。転記も保持もしません)", hit.maker]);
+    } else if (models || names) {
+      if (!own) out.notes.push("型式(" + String(v.model.value).toUpperCase() + ")は自社の登録実績にも型式一覧にも載っていないため、車名・用途は自動入力しません。");
+      else out.notes.push("型式一覧(OBD検査対象車型式一覧)に載っていないため、用途・車両区分は自動入力しません。");
     }
   }
   if (v.fuel && v.fuel.hint) out.refs.push(["燃料の種類", v.fuel.hint]);
@@ -1032,8 +1068,8 @@ function afterScan() {
 
 async function showResult(ev) {
   stopLive();
-  const models = await loadModels();
-  const vals = toFormValues(ev.merged, new Date().getFullYear(), models);
+  const [models, names] = await Promise.all([loadModels(), loadNames()]);
+  const vals = toFormValues(ev.merged, new Date().getFullYear(), models, names);
   currentVals = vals;
   const box = $("sqResult");
   box.replaceChildren();
@@ -1057,12 +1093,37 @@ async function showResult(ev) {
     rows.append(row);
   };
   const val = id => ((document.getElementById(id) || {}).value || "").trim();
+  const addCarnameRow = (host, c, cur) => {
+    const row = document.createElement("div"); row.className = "sq-row";
+    const dt = document.createElement("dt"); dt.textContent = "車名";
+    const dd = document.createElement("dd");
+    const note = document.createElement("div"); note.className = "sq-src";
+    note.textContent = c.src === "own" ? "自社の過去の申込実績(登録の多い順)から" : "国交省のOBD検査対象車型式一覧から" + (c.src === "obd-suffix" ? "(推定)" : "");
+    const warn = document.createElement("div"); warn.className = "cur";
+    const showCur = () => {
+      const chosen = c.idx >= 0 ? c.cands[c.idx] : "";
+      warn.textContent = chosen && cur && cur !== chosen ? "現在の入力: " + cur + "(上書きされます)" : "";
+    };
+    if (c.cands.length === 1) dd.textContent = c.cands[0];
+    else {
+      dd.className = "sq-choice";
+      c.cands.concat([null]).forEach((name, i) => {
+        const idx = name === null ? -1 : i;
+        const lab = document.createElement("label"), rb = document.createElement("input");
+        rb.type = "radio"; rb.name = "sqCarname"; rb.value = String(idx); rb.checked = idx === c.idx;
+        rb.addEventListener("change", () => { c.idx = idx; showCur(); });
+        lab.append(rb, document.createTextNode(" " + (name === null ? "車名を入力しない(手入力する)" : name)));
+        dd.append(lab);
+      });
+    }
+    row.append(dt, dd, note, warn); host.append(row); showCur();
+  };
   addRow("登録番号", vals.regno, val(FIELD.regno));
   addRow("車台番号", vals.chassis, val(FIELD.chassis));
   addRow("初度登録年月", vals.firstReg && vals.firstReg.label, currentFirstReg());
   addRow("HV車", vals.hv && vals.hv.label, vals.hv ? val(FIELD.hv) : "", vals.hv && vals.hv.value);
   if (vals.displacement) addRow("排気量(cc)", vals.displacement.label, val(FIELD.displacement), String(vals.displacement.value));
-  if (vals.carname) addRow("車名(通称名)", vals.carname.label, val(FIELD.carname), vals.carname.value);
+  if (vals.carname) addCarnameRow(rows, vals.carname, val(FIELD.carname));
   if (vals.usage) addRow("用途", vals.usage.label, val(FIELD.usage), vals.usage.value);
   if (vals.cls) addRow("車両区分", vals.cls.label, val(FIELD.cls), vals.cls.value);
   box.append(rows);
@@ -1086,7 +1147,8 @@ async function showResult(ev) {
   const manual = (vals.carname ? [] : ["車名"]).concat(["走行距離"], vals.displacement ? [] : ["排気量"]).join("・");
   p.textContent = manual + "は車検証のQRコードに含まれないため、手入力してください。" +
     (vals.displacement ? "排気量は、軽自動車のため660ccを入力します(実際の排気量と異なる場合は修正してください)。" : "") +
-    ((vals.carname || vals.usage || vals.cls) ? "車名・用途・車両区分は、型式一覧から補う候補です。違う場合は直してください。" : "") +
+    ((vals.carname || vals.usage || vals.cls) ? "車名・用途・車両区分は、型式の表から補う候補です。違う場合は直してください。" : "") +
+    (vals.carname && vals.hv && vals.hv.value === "はい" ? "HV車の車名は、送信時に末尾へ「HV」が付くため、車名欄には付けずに入力してください。" : "") +
     (vals.hv ? "HV車は、原動機型式にハイフン区切りで2つ以上の記載があるかで判定しています。" : "");
   box.append(p);
   if (vals.notes.length) {
@@ -1129,7 +1191,7 @@ function apply() {
   }
   if (v.hv && setField(FIELD.hv, v.hv.value)) filled.push("HV車");
   if (v.displacement && setField(FIELD.displacement, v.displacement.value)) filled.push("排気量(660cc)");
-  if (v.carname && setField(FIELD.carname, v.carname.value)) filled.push("車名");
+  if (v.carname && v.carname.idx >= 0 && setField(FIELD.carname, v.carname.cands[v.carname.idx])) filled.push("車名");
   if (v.usage) {
     const cur = document.getElementById(FIELD.usage);
     if (cur && cur.value === v.usage.value) filled.push("用途");          // 同じ値なら触らない(補償期間の選択を保つ)
@@ -1297,7 +1359,7 @@ function openModal() {
   resetAll();
   $("sqClose").focus();
   initEngine().catch(e => setStatus(engineMessage(e), "err"));
-  loadModels();
+  loadModels(); loadNames();
   if (liveSupported()) {
     startLive();
   } else {
@@ -1322,6 +1384,6 @@ const btn = document.getElementById("btnScanQr");
 if (btn) btn.addEventListener("click", openModal);
 else console.warn("[ShakenQR] #btnScanQr が見つかりません");
 
-window.ShakenQR = { version: VERSION, open: openModal, close: () => closeModal(true), _t: { eraOf, hvFromEngine, toFormValues, buildModelIndex, lookupModel } };
+window.ShakenQR = { version: VERSION, open: openModal, close: () => closeModal(true), _t: { eraOf, hvFromEngine, toFormValues, buildModelIndex, lookupModel, buildNameIndex, lookupOwnNames } };
 
 })();
